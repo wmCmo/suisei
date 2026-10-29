@@ -565,19 +565,19 @@ function renderFill(){
   const peek = ((store.editor || !store.db) && hv.length)
     ? `<div class="hfrow" style="margin:0 0 22px;padding:0;border:0">${hv.map(k=>`<code>@${esc(k)} = ${esc(state.hidden[k])}</code>`).join('')}<span class="lg">editors only</span></div>` : '';
   return shell(`
-    ${first?`<h1 style="font-size:31px;font-weight:700;letter-spacing:-.03em;margin-bottom:26px">${esc(f.title)}</h1>`:''}
+    ${first?`<h1 style="font-size:var(--fs-display);line-height:var(--lh-display);font-weight:700;letter-spacing:-.03em;margin-bottom:26px">${esc(f.title)}</h1>`:''}
     ${peek}
     ${qs}
     <div class="nav">
       ${(!first||state.hist.length)?`<button class="back" data-act="prev">${I.back} Back</button>`:''}
       <button class="submit" data-act="${last?'send':'next'}">${last?esc(t.submit):'Next'} ${I.arrow}</button>
-      ${pages.length>1?`<span style="color:var(--f-muted);font-size:12.5px;font-family:var(--mono)">${state.page+1} / ${pages.length}</span>`:''}
+      ${pages.length>1?`<span style="color:var(--f-muted);font-size:var(--fs-caption);line-height:var(--lh-caption);font-family:var(--mono)">${state.page+1} / ${pages.length}</span>`:''}
     </div>`);
 }
 function renderQ(b){
   const v = state.answers[b.id];
-  if(b.type==='h1') return `<h2 style="font-size:25px;letter-spacing:-.025em;margin:26px 0 10px">${esc(b.label)}</h2>`;
-  if(b.type==='h2') return `<h3 style="font-size:19px;letter-spacing:-.02em;margin:22px 0 8px">${esc(b.label)}</h3>`;
+  if(b.type==='h1') return `<h2 style="font-size:var(--fs-h1);line-height:var(--lh-h1);letter-spacing:-.025em;margin:26px 0 10px">${esc(b.label)}</h2>`;
+  if(b.type==='h2') return `<h3 style="font-size:var(--fs-h2);line-height:var(--lh-h2);letter-spacing:-.02em;margin:22px 0 8px">${esc(b.label)}</h3>`;
   if(b.type==='text') return `<p style="color:var(--f-muted);margin:0 0 20px">${esc(b.label)}</p>`;
   if(b.type==='divider') return `<div class="rule"></div>`;
   const bad = state.bad[b.id];

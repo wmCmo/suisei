@@ -41,7 +41,7 @@ lines.forEach((line, i) => {
     }
   }
   const fs = line.match(/font-size\s*:\s*(\d+(?:\.\d+)?)px/);
-  if (fs) warnings.push(`${at}  raw font-size ${fs[1]}px — no type scale yet`);
+  if (fs) errors.push(`${at}  raw font-size ${fs[1]}px — use a step from the type scale`);
 });
 
 if (errors.length) {

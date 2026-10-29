@@ -60,3 +60,18 @@
 /* The form sheet carries its own set, so a form can be themed
    independently of the app around it. */
 .canvasform{--f-bg:var(--surface);--f-fg:var(--fg);--f-line:var(--line);--f-soft:var(--sunk);--f-muted:var(--muted);--f-wash:var(--soft);--f-accent:#1f4d52;--f-accent-text:var(--f-accent);--f-r:9px;--f-font:var(--ui)}
+
+/* Type. Nine steps, each carrying its own line-height, replacing the
+   twenty sizes that were picked one rule at a time. Sizes only -- the
+   family stays separate so a form can set its own. */
+:root{
+  --fs-display: 30px;  --lh-display: 38px;
+  --fs-h1:      25px;  --lh-h1:      32px;
+  --fs-h2:      19px;  --lh-h2:      26px;
+  --fs-figure:  24px;  --lh-figure:  28px;
+  --fs-ask:     16px;  --lh-ask:     24px;
+  --fs-body:    15px;  --lh-body:    22px;
+  --fs-label:   13px;  --lh-label:   18px;
+  --fs-caption: 12px;  --lh-caption: 16px;
+  --fs-micro:   11px;  --lh-micro:   16px;
+}
