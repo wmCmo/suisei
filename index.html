@@ -115,10 +115,18 @@ svg{display:block}
 .empty strong{display:block;color:var(--fg);font-size:16px;margin-bottom:4px}
 
 /* ---------- form canvas (shared by builder + fill) ---------- */
-.canvasform{--f-bg:var(--surface);--f-fg:var(--fg);--f-line:var(--line);--f-soft:var(--sunk);--f-muted:var(--muted);--f-wash:var(--soft);--f-accent:#1f4d52;--f-r:9px;--f-font:var(--ui);
+.canvasform{--f-bg:var(--surface);--f-fg:var(--fg);--f-line:var(--line);--f-soft:var(--sunk);--f-muted:var(--muted);--f-wash:var(--soft);--f-accent:#1f4d52;--f-accent-text:var(--f-accent);--f-r:9px;--f-font:var(--ui);
   background:var(--f-bg);color:var(--f-fg);font-family:var(--f-font)}
-.canvasform[data-bg="light"]{--f-bg:#fbfaf8;--f-fg:#15181a;--f-line:#d8d4ce;--f-soft:#e2dfda;--f-muted:#5d6165;--f-wash:#d8e3e2}
-.canvasform[data-bg="dark"]{--f-bg:#171c20;--f-fg:#f2efea;--f-line:#2b343b;--f-soft:#12171b;--f-muted:#a9b2b8;--f-wash:#24383c}
+/* A forced sheet also forces the UA's own widgets — scrollbars, selects,
+   date pickers — so they don't arrive in the opposite theme. */
+.canvasform[data-bg="light"]{--f-bg:#fbfaf8;--f-fg:#15181a;--f-line:#d8d4ce;--f-soft:#e2dfda;--f-muted:#5d6165;--f-wash:#d8e3e2;color-scheme:light}
+.canvasform[data-bg="dark"]{--f-bg:#171c20;--f-fg:#f2efea;--f-line:#2b343b;--f-soft:#12171b;--f-muted:#a9b2b8;--f-wash:#24383c;color-scheme:dark}
+/* The accent is picked by whoever built the form, so it can be a deep colour
+   that disappears as text on a dark sheet. Fills keep the chosen colour;
+   text and small marks take a lifted version of it. */
+.canvasform[data-bg="dark"],
+:root[data-theme="dark"] .canvasform[data-bg="auto"]{--f-accent-text:color-mix(in srgb,var(--f-accent) 48%,#f2efea)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .canvasform[data-bg="auto"]{--f-accent-text:color-mix(in srgb,var(--f-accent) 48%,#f2efea)}}
 .canvasform[data-align="center"] .col{text-align:center}
 .canvasform[data-align="center"] .opt{justify-content:center}
 .col{max-width:680px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:44px 64px}
@@ -162,12 +170,12 @@ textarea.fi{resize:vertical;min-height:76px;border-radius:var(--f-r)}
 .opt .rm{color:var(--f-muted);opacity:0;padding:0 2px}
 .opt:hover .rm{opacity:1}
 .addopt{align-self:flex-start;font-size:13.5px;color:var(--f-muted);padding:5px 2px}
-.addopt:hover{color:var(--f-accent)}
+.addopt:hover{color:var(--f-accent-text)}
 .stars{display:flex;gap:7px;align-items:center}
 .stars svg{width:23px;height:23px}
 .stars button,.stars span{color:var(--f-muted);opacity:.42;transition:opacity .12s}
 .stars button:hover{opacity:.8}
-.stars .on{color:var(--f-accent);opacity:1}
+.stars .on{color:var(--f-accent-text);opacity:1}
 .scale{display:flex;gap:6px;flex-wrap:wrap}
 .scale button,.scale span{min-width:38px;height:38px;display:grid;place-items:center;border:1px solid var(--f-line);border-radius:var(--f-r);font-variant-numeric:tabular-nums;font-size:14px}
 .scale .on{background:var(--f-accent);border-color:var(--f-accent);color:#fff}
@@ -186,7 +194,7 @@ textarea.fi{resize:vertical;min-height:76px;border-radius:var(--f-r)}
 .hfrow{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-top:20px;padding-top:14px;border-top:1px solid var(--f-line)}
 .hfrow code{font-family:var(--mono);font-size:11.5px;background:var(--f-soft);padding:3px 7px;border-radius:6px;color:var(--f-muted)}
 .hfrow button{font-size:12.5px;color:var(--f-muted)}
-.hfrow button:hover{color:var(--f-accent)}
+.hfrow button:hover{color:var(--f-accent-text)}
 .hfrow .lg{font-weight:500;font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--f-muted);opacity:.75}
 .hf{display:flex;align-items:center;gap:6px;margin-bottom:6px}
 .hf code{font-family:var(--mono);font-size:11.5px;background:var(--sunk);padding:5px 7px;border-radius:7px;white-space:nowrap;max-width:118px;overflow:hidden;text-overflow:ellipsis}
@@ -195,22 +203,25 @@ textarea.fi{resize:vertical;min-height:76px;border-radius:var(--f-r)}
 .hf .rm:hover{color:var(--warn)}
 .pagebreak{display:flex;align-items:center;gap:10px;margin:18px 0 6px;color:var(--f-muted);font-size:11.5px;font-weight:500;text-transform:uppercase;letter-spacing:.08em}
 .pagebreak::before,.pagebreak::after{content:"";flex:1;height:1px;background:var(--f-line)}
-.toolbar{position:absolute;right:0;top:-32px;z-index:5;display:flex;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:3px;box-shadow:var(--shadow)}
-.toolbar button{display:flex;align-items:center;gap:5px;padding:4px 8px;border-radius:6px;font-size:12.5px;color:var(--muted)}
-.toolbar button:hover{background:var(--sunk);color:var(--fg)}
-.toolbar button.on{color:var(--accent);background:var(--soft)}
-.toolbar .div{width:1px;align-self:stretch;background:var(--line);margin:0 2px}
+/* The toolbar and the block menu act on the form sheet, so they take the
+   sheet's tokens, not the app's. Otherwise forcing a light form under a dark
+   OS floats a near-black pill over cream. */
+.toolbar{position:absolute;right:0;top:-32px;z-index:5;display:flex;align-items:center;gap:2px;background:var(--f-bg);border:1px solid var(--f-line);border-radius:9px;padding:3px;box-shadow:var(--shadow)}
+.toolbar button{display:flex;align-items:center;gap:5px;padding:4px 8px;border-radius:6px;font-size:12.5px;color:var(--f-muted)}
+.toolbar button:hover{background:var(--f-soft);color:var(--f-fg)}
+.toolbar button.on{color:var(--f-accent-text);background:var(--f-wash)}
+.toolbar .div{width:1px;align-self:stretch;background:var(--f-line);margin:0 2px}
 
 /* ---------- slash menu ---------- */
-.menu{position:absolute;z-index:60;width:272px;max-height:332px;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:6px}
-.menu .q{display:block;width:100%;background:var(--sunk);border:0;border-radius:7px;padding:7px 9px;font-size:13.5px;margin-bottom:5px}
+.menu{position:absolute;z-index:60;width:272px;max-height:332px;overflow:auto;background:var(--f-bg);color:var(--f-fg);font-family:var(--ui);border:1px solid var(--f-line);border-radius:12px;box-shadow:var(--shadow);padding:6px}
+.menu .q{display:block;width:100%;background:var(--f-soft);color:inherit;border:0;border-radius:7px;padding:7px 9px;font-size:13.5px;margin-bottom:5px}
 .menu .q:focus{outline:none}
-.menu .grp{font-size:10.5px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:8px 8px 4px}
+.menu .grp{font-size:10.5px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--f-muted);padding:8px 8px 4px}
 .menu .it{display:flex;align-items:center;gap:9px;width:100%;padding:7px 8px;border-radius:7px;font-size:13.8px;text-align:left}
-.menu .it .ic{flex:none;display:grid;place-items:center;width:25px;height:25px;border-radius:6px;background:var(--sunk);color:var(--muted)}
-.menu .it[aria-selected="true"]{background:var(--soft)}
-.menu .it[aria-selected="true"] .ic{background:var(--accent);color:var(--accent-fg)}
-.menu .none{padding:14px 8px;color:var(--muted);font-size:13px}
+.menu .it .ic{flex:none;display:grid;place-items:center;width:25px;height:25px;border-radius:6px;background:var(--f-soft);color:var(--f-muted)}
+.menu .it[aria-selected="true"]{background:var(--f-wash)}
+.menu .it[aria-selected="true"] .ic{background:var(--f-accent);color:#fbfaf8}
+.menu .none{padding:14px 8px;color:var(--f-muted);font-size:13px}
 
 /* ---------- panels / overlays ---------- */
 .scrim{position:fixed;inset:0;z-index:50;background:rgba(17,16,22,.32)}
@@ -1013,7 +1024,10 @@ function drawMenu(){
   const m = state.menu; if(!m) return;
   const items = menuItems();
   if(m.idx >= items.length) m.idx = Math.max(0, items.length-1);
-  const el = document.createElement('div'); el.className='menu';
+  const el = document.createElement('div');
+  el.className = 'menu canvasform';
+  const mf = form();
+  if(mf){ el.setAttribute('data-bg', mf.theme.bg); el.setAttribute('style', themeVars(mf)); }
   let html = m.kind==='type' ? '' : `<input class="q" placeholder="Search blocks…" value="${esc(m.q)}" aria-label="Search blocks">`;
   let grp = '';
   items.forEach((k,i)=>{
