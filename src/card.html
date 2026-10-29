@@ -1,0 +1,107 @@
+<!doctype html>
+<!--
+  The share card. This file is the generator, not a page: it draws card.png at
+  exactly 1200x630 on a canvas, so the output does not depend on the window.
+
+  To redraw it:  node scripts/card.mjs
+  which serves the repo, opens this with ?save, and writes card.png to the root.
+  Open it without ?save to look at the card on its own.
+
+  A canvas rather than HTML because a screenshot is whatever size the window
+  was, and an og:image that is not 1200x630 gets cropped by whoever renders it.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Suisei share card</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+  html,body{margin:0;height:100%;background:#0d1113;display:grid;place-items:center}
+  canvas{max-width:100%;height:auto;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+</style>
+</head>
+<body>
+<canvas id="c" width="1200" height="630"></canvas>
+<script>
+/* Nightside, straight from tokens.css */
+const BG = '#171c20', FG = '#f2efea', MUTED = '#a9b2b8',
+      ACCENT = '#7fc3bd', ON_ACCENT = '#0f1a1c';
+const UI = "'Zen Kaku Gothic New', system-ui, sans-serif";
+
+function roundRect(g, x, y, w, h, r){
+  g.beginPath();
+  g.moveTo(x + r, y);
+  g.arcTo(x + w, y,     x + w, y + h, r);
+  g.arcTo(x + w, y + h, x,     y + h, r);
+  g.arcTo(x,     y + h, x,     y,     r);
+  g.arcTo(x,     y,     x + w, y,     r);
+  g.closePath();
+}
+
+function draw(g){
+  g.fillStyle = BG;
+  g.fillRect(0, 0, 1200, 630);
+
+  /* One luminous thing and a lot of nothing — the only idea taken from the
+     poster. It sits off the right edge and never becomes a shape: a planet
+     would make this look like an astronomy app. */
+  const cx = 1080, cy = 315, R = 420;
+  const glow = g.createRadialGradient(cx, cy, 0, cx, cy, R);
+  glow.addColorStop(0,   'rgba(127,195,189,.30)');
+  glow.addColorStop(.38, 'rgba(127,195,189,.13)');
+  glow.addColorStop(1,   'rgba(127,195,189,0)');
+  g.fillStyle = glow;
+  g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fill();
+
+  /* the orbit, stated once */
+  g.strokeStyle = 'rgba(127,195,189,.22)';
+  g.lineWidth = 1;
+  g.beginPath(); g.arc(cx, cy, 310, 0, Math.PI * 2); g.stroke();
+
+  const L = 96;                       // the left margin everything hangs off
+
+  /* the mark: 水 in its square, then the wordmark */
+  roundRect(g, L, 134, 72, 72, 16);
+  g.fillStyle = ACCENT; g.fill();
+  g.fillStyle = ON_ACCENT;
+  g.font = '700 44px ' + UI;
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText('水', L + 36, 134 + 38);
+
+  g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+  g.fillStyle = FG;
+  g.font = '700 46px ' + UI;
+  g.fillText('Suisei', L + 90, 186);
+
+  g.font = '700 66px ' + UI;
+  g.fillText('Write a form the way', L, 342);
+  g.fillText('you write a document.', L, 420);
+
+  g.fillStyle = MUTED;
+  g.font = '400 30px ' + UI;
+  g.fillText('Blocks, conditional logic, hidden fields, responses.', L, 492);
+}
+
+(async () => {
+  const c = document.getElementById('c');
+  const g = c.getContext('2d', {alpha: false});   // no alpha channel: a third of the file for nothing
+  // the brand face has to be resident before the first fillText, or the card
+  // silently renders in the fallback and looks almost right
+  await Promise.all([
+    document.fonts.load('700 66px "Zen Kaku Gothic New"'),
+    document.fonts.load('400 30px "Zen Kaku Gothic New"'),
+    document.fonts.load('700 44px "Zen Kaku Gothic New"', '水'),
+  ]);
+  await document.fonts.ready;
+  draw(g);
+
+  if (new URLSearchParams(location.search).has('save')) {
+    const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+    const res = await fetch('/__card', {method: 'POST', body: blob});
+    document.title = res.ok ? 'saved ' + blob.size : 'failed';
+  }
+})();
+</script>
+</body>
+</html>
