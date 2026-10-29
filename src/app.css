@@ -17,7 +17,8 @@ svg{display:block}
 .bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;display:flex;align-items:center;gap:var(--sp-2);height:52px;
   background:var(--surface);border-bottom:1px solid var(--line);
   padding-left:max(var(--sp-3),env(safe-area-inset-left,0px));padding-right:max(var(--sp-3),env(safe-area-inset-right,0px))}
-.mark{display:flex;align-items:center;gap:var(--sp-2);font-weight:700;letter-spacing:-.02em;text-decoration:none}
+/* an anchor with no colour of its own gets the browser's visited purple */
+.mark{display:flex;align-items:center;gap:var(--sp-2);font-weight:700;letter-spacing:-.02em;text-decoration:none;color:inherit}
 .mark i{display:grid;place-items:center;width:22px;height:22px;border-radius:var(--r-sm);background:var(--accent);color:var(--accent-fg);font-style:normal;font-size:var(--fs-label);line-height:var(--lh-label);font-weight:700}
 .crumb{display:flex;align-items:center;gap:var(--sp-2);min-width:0;flex:1}
 .crumb .sep{color:var(--faint)}
