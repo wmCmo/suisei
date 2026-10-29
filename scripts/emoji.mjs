@@ -1,10 +1,16 @@
 /**
- * Builds src/emoji.json: the icons offered in the form icon picker.
+ * Builds src/emoji.json: every icon the form icon picker offers.
  *
- * Fluent Emoji's folder names do not always follow from the emoji's name, and
- * the hand and body emoji carry an extra skin-tone level in their path. So
- * every candidate is requested before it is written out, and anything that
- * does not resolve is dropped rather than shipped as a broken image.
+ * It used to walk a hand-written list of names and probe each one, because
+ * Fluent Emoji's folder names do not follow from the emoji's name and the hand
+ * and body emoji carry an extra skin-tone level in their path. That capped the
+ * picker at what somebody had thought to type out, and cost one request per
+ * candidate.
+ *
+ * So instead: read the repository's own tree once, at a pinned commit, and keep
+ * every Flat SVG it actually contains. No guessing, no probing, and the path is
+ * whatever the repo says it is — including the skin-toned ones, which simply
+ * have Default in the middle.
  *
  *   node scripts/emoji.mjs            keep the pinned commit
  *   node scripts/emoji.mjs --latest   repin to the current main
@@ -15,76 +21,50 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const REPO = 'microsoft/fluentui-emoji';
+const OUT = resolve(root, 'src/emoji.json');
 
-// Emoji whose path carries a skin tone: assets/<Name>/Default/Flat/<slug>_flat_default.svg
-const SKIN_TONED = [
-  'Thumbs up', 'Waving hand', 'Folded hands', 'Clapping hands', 'Writing hand',
-  'Raising hands', 'Victory hand', 'Index pointing up', 'Flexed biceps',
-];
+const gh = async (path) => {
+  const res = await fetch(`https://api.github.com/repos/${REPO}/${path}`, {
+    headers: {accept: 'application/vnd.github+json', 'user-agent': 'suisei-emoji-index'},
+  });
+  if (!res.ok) throw new Error(`GitHub ${res.status} on ${path} — ${await res.text()}`);
+  return res.json();
+};
 
-const PLAIN = `
-Grinning face, Smiling face with smiling eyes, Face with tears of joy, Winking face,
-Smiling face with hearts, Face blowing a kiss, Thinking face, Partying face,
-Smiling face with sunglasses, Shushing face, Face with monocle, Nerd face, Hugging face,
-Saluting face, Melting face,
-Memo, Pencil, Clipboard, Card index dividers, Bar chart, Chart increasing, Calendar,
-Spiral calendar, Alarm clock, Hourglass done, Paperclip, Pushpin, Round pushpin, Bookmark,
-Books, Open book, Envelope, Inbox tray, Package, Label, Key, Locked, Unlocked,
-Magnifying glass tilted left, Light bulb, Laptop, Desktop computer, Mobile phone, Camera,
-Microphone, Headphone, Speech balloon, Thought balloon, Megaphone, Bell, Trophy,
-1st place medal, Bullseye, Gear, Wrench, Hammer, Toolbox, Link, Rocket, Artist palette,
-Paintbrush, Crayon, Scissors, Straight ruler, Test tube, Microscope, Telescope, Compass,
-World map, Briefcase, Credit card, Money bag, Dollar banknote, Shopping cart, Ticket,
-Wrapped gift, Balloon, Party popper, Confetti ball, Sparkles, Star, Glowing star, Fire,
-High voltage, Rainbow, Sun, Crescent moon, Cloud, Snowflake, Droplet, Water wave,
-Seedling, Herb, Four leaf clover, Maple leaf, Cherry blossom, Rose, Sunflower, Tulip,
-Potted plant, Deciduous tree, Cactus, Mushroom,
-Hot beverage, Teacup without handle, Bubble tea, Cup with straw, Beer mug,
-Clinking beer mugs, Wine glass, Birthday cake, Shortcake, Cookie, Doughnut, Pizza,
-Hamburger, French fries, Sushi, Bento box, Rice ball, Steaming bowl, Red apple,
-Green apple, Banana, Strawberry, Watermelon, Grapes, Avocado, Broccoli,
-Dog, Cat face, Fox, Bear, Panda, Penguin, Rabbit face, Unicorn, Butterfly, Honeybee,
-Turtle, Whale, Dolphin, Octopus,
-Airplane, Automobile, Bicycle, Locomotive, Sailboat, Anchor, Mountain, Camping,
-National park, Beach with umbrella, House, Office building, School, Hospital, Castle,
-Tokyo tower,
-Check mark button, Cross mark, Warning, Red question mark, Information, Red heart,
-Blue heart, Purple heart, Green heart, Yellow heart, Orange heart, Sparkling heart,
-Hundred points, Recycling symbol, Infinity
-`.split(',').map((s) => s.trim().replace(/\s+/g, ' ')).filter(Boolean);
+const pinned = async () => {
+  try { return JSON.parse(await readFile(OUT, 'utf8')).ref; } catch { return null; }
+};
 
-const slug = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
-const url = (ref, path) =>
-  `https://cdn.jsdelivr.net/gh/${REPO}@${ref}/assets/` +
-  path.split('/').map(encodeURIComponent).join('/');
+const ref = process.argv.includes('--latest') || !(await pinned())
+  ? (await gh('commits/main')).sha
+  : await pinned();
 
-let ref;
-if (process.argv.includes('--latest')) {
-  const res = await fetch(`https://api.github.com/repos/${REPO}/commits/main`);
-  ref = (await res.json()).sha;
-  console.log(`repinned to ${ref}`);
-} else {
-  ref = JSON.parse(await readFile(resolve(root, 'src/emoji.json'), 'utf8')).ref;
-  console.log(`keeping ${ref}`);
+console.log(`Reading ${REPO} @ ${ref.slice(0, 12)}`);
+const tree = await gh(`git/trees/${ref}?recursive=1`);
+if (tree.truncated) throw new Error('the tree came back truncated; this needs paging before it can be trusted');
+
+/* assets/<Name>/Flat/<slug>_flat.svg
+   assets/<Name>/Default/Flat/<slug>_flat_default.svg   (the skin-toned ones)
+   Anything else in the repo — 3D, Color, High Contrast, other skin tones — is
+   deliberately left out: Flat is a couple of KB and a grid of them stays cheap. */
+const FLAT = /^assets\/([^/]+)\/(?:Default\/)?Flat\/[^/]+\.svg$/;
+
+const byName = new Map();
+for (const node of tree.tree) {
+  if (node.type !== 'blob') continue;
+  const m = FLAT.exec(node.path);
+  if (!m) continue;
+  const [, name] = m;
+  const p = node.path.slice('assets/'.length);
+  // a plain Flat beats a Default/Flat for the same emoji, so the picker shows
+  // the neutral form rather than one arbitrary skin tone
+  const better = !byName.has(name) || (!p.includes('/Default/') && byName.get(name).includes('/Default/'));
+  if (better) byName.set(name, p);
 }
 
-const candidates = [
-  ...PLAIN.map((n) => [n, `${n}/Flat/${slug(n)}_flat.svg`]),
-  ...SKIN_TONED.map((n) => [n, `${n}/Default/Flat/${slug(n)}_flat_default.svg`]),
-];
+const list = [...byName]
+  .map(([n, p]) => ({n, p}))
+  .sort((a, b) => a.n.localeCompare(b.n, 'en'));
 
-const kept = [];
-const dropped = [];
-for (const [n, p] of candidates) {
-  const res = await fetch(url(ref, p), { method: 'GET' });
-  if (res.ok) kept.push({ n, p });
-  else dropped.push(`${n} (${res.status})`);
-  await new Promise((r) => setTimeout(r, 120));   // the CDN rate-limits a burst
-}
-
-kept.sort((a, b) => a.n.localeCompare(b.n));
-await writeFile(resolve(root, 'src/emoji.json'),
-  JSON.stringify({ ref, emoji: kept }), 'utf8');
-
-console.log(`${kept.length} verified, ${dropped.length} dropped`);
-if (dropped.length) console.log('  ' + dropped.join(', '));
+await writeFile(OUT, JSON.stringify({ref, emoji: list}), 'utf8');
+console.log(`${list.length} icons -> src/emoji.json  (${((await readFile(OUT)).length / 1024).toFixed(0)} KB)`);

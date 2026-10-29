@@ -76,18 +76,24 @@
 }
 /* A forced sheet also forces the UA's own widgets — scrollbars, selects,
    date pickers — so they don't arrive in the opposite theme. */
-.canvasform[data-bg="light"]{--f-bg:#fbfaf8;--f-fg:#15181a;--f-line:#d8d4ce;--f-soft:#e2dfda;--f-muted:#5d6165;--f-wash:#d8e3e2;color-scheme:light}
-.canvasform[data-bg="dark"]{--f-bg:#171c20;--f-fg:#f2efea;--f-line:#2b343b;--f-soft:#12171b;--f-muted:#a9b2b8;--f-wash:#24383c;color-scheme:dark}
+.canvasform[data-bg="light"]{--f-bg:#fbfaf8;--f-fg:#15181a;--f-line:#d8d4ce;--f-soft:#e2dfda;--f-muted:#5d6165;--f-wash:var(--f-wash-light);color-scheme:light}
+.canvasform[data-bg="dark"]{--f-bg:#171c20;--f-fg:#f2efea;--f-line:#2b343b;--f-soft:#12171b;--f-muted:#a9b2b8;--f-wash:var(--f-wash-dark);color-scheme:dark}
 /* The accent is picked by whoever built the form, so it can be a deep colour
    that disappears as text on a dark sheet. Fills keep the chosen colour;
    text and small marks take a lifted version of it. */
 .canvasform[data-bg="dark"],
-:root[data-theme="dark"] .canvasform[data-bg="auto"]{--f-accent-text:color-mix(in srgb,var(--f-accent) 48%,#f2efea)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .canvasform[data-bg="auto"]{--f-accent-text:color-mix(in srgb,var(--f-accent) 48%,#f2efea)}}
+:root[data-theme="dark"] .canvasform[data-bg="auto"]{--f-accent-text:color-mix(in srgb,var(--f-accent) 48%,#f2efea);--f-wash:var(--f-wash-dark)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .canvasform[data-bg="auto"]{--f-accent-text:color-mix(in srgb,var(--f-accent) 48%,#f2efea);--f-wash:var(--f-wash-dark)}}
 
 /* The form sheet carries its own set, so a form can be themed
    independently of the app around it. */
-.canvasform{--f-bg:var(--surface);--f-fg:var(--fg);--f-line:var(--line);--f-soft:var(--sunk);--f-muted:var(--muted);--f-wash:var(--soft);--f-accent:#1f4d52;--f-accent-text:var(--f-accent);--f-r:9px;--f-font:var(--ui)}
+.canvasform{--f-bg:var(--surface);--f-fg:var(--fg);--f-line:var(--line);--f-soft:var(--sunk);--f-muted:var(--muted);--f-wash:var(--f-wash-light);--f-accent:#1f4d52;--f-accent-text:var(--f-accent);--f-r:9px;--f-font:var(--ui);
+  /* The accent used to paint one thing while every tint around it stayed the
+     teal it was born with, so changing the swatch barely changed the form.
+     The wash is now mixed from whatever the accent is: more of it on a dark
+     sheet, where 14% of anything disappears. */
+  --f-wash-light:color-mix(in srgb,var(--f-accent) 14%,var(--f-bg));
+  --f-wash-dark:color-mix(in srgb,var(--f-accent) 40%,var(--f-bg))}
 
 /* Type. Nine steps, each carrying its own line-height, replacing the
    twenty sizes that were picked one rule at a time. Sizes only -- the
@@ -290,6 +296,11 @@ select.fi{height:40px;padding-right:var(--sp-2)}
 .swatches{display:flex;gap:var(--sp-2);flex-wrap:wrap}
 .swatches button{width:26px;height:26px;border-radius:50%;border:2px solid transparent}
 .swatches button[aria-pressed="true"]{border-color:var(--fg)}
+/* the native picker, shrunk to look like one more swatch */
+.swatches input[type="color"]{width:26px;height:26px;padding:0;border:1px dashed var(--line-2);border-radius:50%;background:none;cursor:pointer}
+.swatches input[type="color"]::-webkit-color-swatch-wrapper{padding:0}
+.swatches input[type="color"]::-webkit-color-swatch{border:0;border-radius:50%}
+.swatches input[type="color"]::-moz-color-swatch{border:0;border-radius:50%}
 .chips{display:flex;gap:var(--sp-1);flex-wrap:wrap}
 .chips button{padding:var(--sp-1) var(--sp-2);border:1px solid var(--line);border-radius:var(--r);font-size:var(--fs-label);line-height:var(--lh-label)}
 .chips button[aria-pressed="true"]{border-color:var(--accent);background:var(--soft);color:var(--accent)}
@@ -392,7 +403,7 @@ td.when{color:var(--muted);font-variant-numeric:tabular-nums}
 <div class="stage" id="stage"></div>
 <div id="layer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script>window.SUISEI={"url":"https://ygdzcaneqpgkuumibtga.supabase.co","key":"sb_publishable_JvtFENRbPLMdQXbtCLTxRA_FLvKqJea","emoji":{"ref":"1ffb34c752ecf5d402f04cfb4b392c77f57c54bc","list":[{"n":"1st place medal","p":"1st place medal/Flat/1st_place_medal_flat.svg"},{"n":"Airplane","p":"Airplane/Flat/airplane_flat.svg"},{"n":"Alarm clock","p":"Alarm clock/Flat/alarm_clock_flat.svg"},{"n":"Anchor","p":"Anchor/Flat/anchor_flat.svg"},{"n":"Artist palette","p":"Artist palette/Flat/artist_palette_flat.svg"},{"n":"Automobile","p":"Automobile/Flat/automobile_flat.svg"},{"n":"Avocado","p":"Avocado/Flat/avocado_flat.svg"},{"n":"Balloon","p":"Balloon/Flat/balloon_flat.svg"},{"n":"Banana","p":"Banana/Flat/banana_flat.svg"},{"n":"Bar chart","p":"Bar chart/Flat/bar_chart_flat.svg"},{"n":"Beach with umbrella","p":"Beach with umbrella/Flat/beach_with_umbrella_flat.svg"},{"n":"Bear","p":"Bear/Flat/bear_flat.svg"},{"n":"Beer mug","p":"Beer mug/Flat/beer_mug_flat.svg"},{"n":"Bell","p":"Bell/Flat/bell_flat.svg"},{"n":"Bento box","p":"Bento box/Flat/bento_box_flat.svg"},{"n":"Bicycle","p":"Bicycle/Flat/bicycle_flat.svg"},{"n":"Birthday cake","p":"Birthday cake/Flat/birthday_cake_flat.svg"},{"n":"Blue heart","p":"Blue heart/Flat/blue_heart_flat.svg"},{"n":"Bookmark","p":"Bookmark/Flat/bookmark_flat.svg"},{"n":"Books","p":"Books/Flat/books_flat.svg"},{"n":"Briefcase","p":"Briefcase/Flat/briefcase_flat.svg"},{"n":"Broccoli","p":"Broccoli/Flat/broccoli_flat.svg"},{"n":"Bubble tea","p":"Bubble tea/Flat/bubble_tea_flat.svg"},{"n":"Bullseye","p":"Bullseye/Flat/bullseye_flat.svg"},{"n":"Butterfly","p":"Butterfly/Flat/butterfly_flat.svg"},{"n":"Cactus","p":"Cactus/Flat/cactus_flat.svg"},{"n":"Calendar","p":"Calendar/Flat/calendar_flat.svg"},{"n":"Camera","p":"Camera/Flat/camera_flat.svg"},{"n":"Camping","p":"Camping/Flat/camping_flat.svg"},{"n":"Card index dividers","p":"Card index dividers/Flat/card_index_dividers_flat.svg"},{"n":"Castle","p":"Castle/Flat/castle_flat.svg"},{"n":"Cat face","p":"Cat face/Flat/cat_face_flat.svg"},{"n":"Chart increasing","p":"Chart increasing/Flat/chart_increasing_flat.svg"},{"n":"Check mark button","p":"Check mark button/Flat/check_mark_button_flat.svg"},{"n":"Cherry blossom","p":"Cherry blossom/Flat/cherry_blossom_flat.svg"},{"n":"Clapping hands","p":"Clapping hands/Default/Flat/clapping_hands_flat_default.svg"},{"n":"Clinking beer mugs","p":"Clinking beer mugs/Flat/clinking_beer_mugs_flat.svg"},{"n":"Clipboard","p":"Clipboard/Flat/clipboard_flat.svg"},{"n":"Cloud","p":"Cloud/Flat/cloud_flat.svg"},{"n":"Compass","p":"Compass/Flat/compass_flat.svg"},{"n":"Confetti ball","p":"Confetti ball/Flat/confetti_ball_flat.svg"},{"n":"Cookie","p":"Cookie/Flat/cookie_flat.svg"},{"n":"Crayon","p":"Crayon/Flat/crayon_flat.svg"},{"n":"Credit card","p":"Credit card/Flat/credit_card_flat.svg"},{"n":"Crescent moon","p":"Crescent moon/Flat/crescent_moon_flat.svg"},{"n":"Cross mark","p":"Cross mark/Flat/cross_mark_flat.svg"},{"n":"Cup with straw","p":"Cup with straw/Flat/cup_with_straw_flat.svg"},{"n":"Deciduous tree","p":"Deciduous tree/Flat/deciduous_tree_flat.svg"},{"n":"Desktop computer","p":"Desktop computer/Flat/desktop_computer_flat.svg"},{"n":"Dog","p":"Dog/Flat/dog_flat.svg"},{"n":"Dollar banknote","p":"Dollar banknote/Flat/dollar_banknote_flat.svg"},{"n":"Dolphin","p":"Dolphin/Flat/dolphin_flat.svg"},{"n":"Doughnut","p":"Doughnut/Flat/doughnut_flat.svg"},{"n":"Droplet","p":"Droplet/Flat/droplet_flat.svg"},{"n":"Envelope","p":"Envelope/Flat/envelope_flat.svg"},{"n":"Face blowing a kiss","p":"Face blowing a kiss/Flat/face_blowing_a_kiss_flat.svg"},{"n":"Face with monocle","p":"Face with monocle/Flat/face_with_monocle_flat.svg"},{"n":"Face with tears of joy","p":"Face with tears of joy/Flat/face_with_tears_of_joy_flat.svg"},{"n":"Fire","p":"Fire/Flat/fire_flat.svg"},{"n":"Flexed biceps","p":"Flexed biceps/Default/Flat/flexed_biceps_flat_default.svg"},{"n":"Folded hands","p":"Folded hands/Default/Flat/folded_hands_flat_default.svg"},{"n":"Four leaf clover","p":"Four leaf clover/Flat/four_leaf_clover_flat.svg"},{"n":"Fox","p":"Fox/Flat/fox_flat.svg"},{"n":"French fries","p":"French fries/Flat/french_fries_flat.svg"},{"n":"Gear","p":"Gear/Flat/gear_flat.svg"},{"n":"Glowing star","p":"Glowing star/Flat/glowing_star_flat.svg"},{"n":"Grapes","p":"Grapes/Flat/grapes_flat.svg"},{"n":"Green apple","p":"Green apple/Flat/green_apple_flat.svg"},{"n":"Green heart","p":"Green heart/Flat/green_heart_flat.svg"},{"n":"Grinning face","p":"Grinning face/Flat/grinning_face_flat.svg"},{"n":"Hamburger","p":"Hamburger/Flat/hamburger_flat.svg"},{"n":"Hammer","p":"Hammer/Flat/hammer_flat.svg"},{"n":"Headphone","p":"Headphone/Flat/headphone_flat.svg"},{"n":"Herb","p":"Herb/Flat/herb_flat.svg"},{"n":"High voltage","p":"High voltage/Flat/high_voltage_flat.svg"},{"n":"Honeybee","p":"Honeybee/Flat/honeybee_flat.svg"},{"n":"Hospital","p":"Hospital/Flat/hospital_flat.svg"},{"n":"Hot beverage","p":"Hot beverage/Flat/hot_beverage_flat.svg"},{"n":"Hourglass done","p":"Hourglass done/Flat/hourglass_done_flat.svg"},{"n":"House","p":"House/Flat/house_flat.svg"},{"n":"Hugging face","p":"Hugging face/Flat/hugging_face_flat.svg"},{"n":"Hundred points","p":"Hundred points/Flat/hundred_points_flat.svg"},{"n":"Inbox tray","p":"Inbox tray/Flat/inbox_tray_flat.svg"},{"n":"Index pointing up","p":"Index pointing up/Default/Flat/index_pointing_up_flat_default.svg"},{"n":"Infinity","p":"Infinity/Flat/infinity_flat.svg"},{"n":"Information","p":"Information/Flat/information_flat.svg"},{"n":"Key","p":"Key/Flat/key_flat.svg"},{"n":"Label","p":"Label/Flat/label_flat.svg"},{"n":"Laptop","p":"Laptop/Flat/laptop_flat.svg"},{"n":"Light bulb","p":"Light bulb/Flat/light_bulb_flat.svg"},{"n":"Link","p":"Link/Flat/link_flat.svg"},{"n":"Locked","p":"Locked/Flat/locked_flat.svg"},{"n":"Locomotive","p":"Locomotive/Flat/locomotive_flat.svg"},{"n":"Magnifying glass tilted left","p":"Magnifying glass tilted left/Flat/magnifying_glass_tilted_left_flat.svg"},{"n":"Maple leaf","p":"Maple leaf/Flat/maple_leaf_flat.svg"},{"n":"Megaphone","p":"Megaphone/Flat/megaphone_flat.svg"},{"n":"Melting face","p":"Melting face/Flat/melting_face_flat.svg"},{"n":"Memo","p":"Memo/Flat/memo_flat.svg"},{"n":"Microphone","p":"Microphone/Flat/microphone_flat.svg"},{"n":"Microscope","p":"Microscope/Flat/microscope_flat.svg"},{"n":"Mobile phone","p":"Mobile phone/Flat/mobile_phone_flat.svg"},{"n":"Money bag","p":"Money bag/Flat/money_bag_flat.svg"},{"n":"Mountain","p":"Mountain/Flat/mountain_flat.svg"},{"n":"Mushroom","p":"Mushroom/Flat/mushroom_flat.svg"},{"n":"National park","p":"National park/Flat/national_park_flat.svg"},{"n":"Nerd face","p":"Nerd face/Flat/nerd_face_flat.svg"},{"n":"Octopus","p":"Octopus/Flat/octopus_flat.svg"},{"n":"Office building","p":"Office building/Flat/office_building_flat.svg"},{"n":"Open book","p":"Open book/Flat/open_book_flat.svg"},{"n":"Orange heart","p":"Orange heart/Flat/orange_heart_flat.svg"},{"n":"Package","p":"Package/Flat/package_flat.svg"},{"n":"Paintbrush","p":"Paintbrush/Flat/paintbrush_flat.svg"},{"n":"Panda","p":"Panda/Flat/panda_flat.svg"},{"n":"Paperclip","p":"Paperclip/Flat/paperclip_flat.svg"},{"n":"Party popper","p":"Party popper/Flat/party_popper_flat.svg"},{"n":"Partying face","p":"Partying face/Flat/partying_face_flat.svg"},{"n":"Pencil","p":"Pencil/Flat/pencil_flat.svg"},{"n":"Penguin","p":"Penguin/Flat/penguin_flat.svg"},{"n":"Pizza","p":"Pizza/Flat/pizza_flat.svg"},{"n":"Potted plant","p":"Potted plant/Flat/potted_plant_flat.svg"},{"n":"Purple heart","p":"Purple heart/Flat/purple_heart_flat.svg"},{"n":"Pushpin","p":"Pushpin/Flat/pushpin_flat.svg"},{"n":"Rabbit face","p":"Rabbit face/Flat/rabbit_face_flat.svg"},{"n":"Rainbow","p":"Rainbow/Flat/rainbow_flat.svg"},{"n":"Raising hands","p":"Raising hands/Default/Flat/raising_hands_flat_default.svg"},{"n":"Recycling symbol","p":"Recycling symbol/Flat/recycling_symbol_flat.svg"},{"n":"Red apple","p":"Red apple/Flat/red_apple_flat.svg"},{"n":"Red heart","p":"Red heart/Flat/red_heart_flat.svg"},{"n":"Red question mark","p":"Red question mark/Flat/red_question_mark_flat.svg"},{"n":"Rice ball","p":"Rice ball/Flat/rice_ball_flat.svg"},{"n":"Rocket","p":"Rocket/Flat/rocket_flat.svg"},{"n":"Rose","p":"Rose/Flat/rose_flat.svg"},{"n":"Round pushpin","p":"Round pushpin/Flat/round_pushpin_flat.svg"},{"n":"Sailboat","p":"Sailboat/Flat/sailboat_flat.svg"},{"n":"Saluting face","p":"Saluting face/Flat/saluting_face_flat.svg"},{"n":"School","p":"School/Flat/school_flat.svg"},{"n":"Scissors","p":"Scissors/Flat/scissors_flat.svg"},{"n":"Seedling","p":"Seedling/Flat/seedling_flat.svg"},{"n":"Shopping cart","p":"Shopping cart/Flat/shopping_cart_flat.svg"},{"n":"Shortcake","p":"Shortcake/Flat/shortcake_flat.svg"},{"n":"Shushing face","p":"Shushing face/Flat/shushing_face_flat.svg"},{"n":"Smiling face with hearts","p":"Smiling face with hearts/Flat/smiling_face_with_hearts_flat.svg"},{"n":"Smiling face with smiling eyes","p":"Smiling face with smiling eyes/Flat/smiling_face_with_smiling_eyes_flat.svg"},{"n":"Smiling face with sunglasses","p":"Smiling face with sunglasses/Flat/smiling_face_with_sunglasses_flat.svg"},{"n":"Snowflake","p":"Snowflake/Flat/snowflake_flat.svg"},{"n":"Sparkles","p":"Sparkles/Flat/sparkles_flat.svg"},{"n":"Sparkling heart","p":"Sparkling heart/Flat/sparkling_heart_flat.svg"},{"n":"Speech balloon","p":"Speech balloon/Flat/speech_balloon_flat.svg"},{"n":"Spiral calendar","p":"Spiral calendar/Flat/spiral_calendar_flat.svg"},{"n":"Star","p":"Star/Flat/star_flat.svg"},{"n":"Steaming bowl","p":"Steaming bowl/Flat/steaming_bowl_flat.svg"},{"n":"Straight ruler","p":"Straight ruler/Flat/straight_ruler_flat.svg"},{"n":"Strawberry","p":"Strawberry/Flat/strawberry_flat.svg"},{"n":"Sun","p":"Sun/Flat/sun_flat.svg"},{"n":"Sunflower","p":"Sunflower/Flat/sunflower_flat.svg"},{"n":"Sushi","p":"Sushi/Flat/sushi_flat.svg"},{"n":"Teacup without handle","p":"Teacup without handle/Flat/teacup_without_handle_flat.svg"},{"n":"Telescope","p":"Telescope/Flat/telescope_flat.svg"},{"n":"Test tube","p":"Test tube/Flat/test_tube_flat.svg"},{"n":"Thinking face","p":"Thinking face/Flat/thinking_face_flat.svg"},{"n":"Thought balloon","p":"Thought balloon/Flat/thought_balloon_flat.svg"},{"n":"Thumbs up","p":"Thumbs up/Default/Flat/thumbs_up_flat_default.svg"},{"n":"Ticket","p":"Ticket/Flat/ticket_flat.svg"},{"n":"Tokyo tower","p":"Tokyo tower/Flat/tokyo_tower_flat.svg"},{"n":"Toolbox","p":"Toolbox/Flat/toolbox_flat.svg"},{"n":"Trophy","p":"Trophy/Flat/trophy_flat.svg"},{"n":"Tulip","p":"Tulip/Flat/tulip_flat.svg"},{"n":"Turtle","p":"Turtle/Flat/turtle_flat.svg"},{"n":"Unicorn","p":"Unicorn/Flat/unicorn_flat.svg"},{"n":"Unlocked","p":"Unlocked/Flat/unlocked_flat.svg"},{"n":"Victory hand","p":"Victory hand/Default/Flat/victory_hand_flat_default.svg"},{"n":"Warning","p":"Warning/Flat/warning_flat.svg"},{"n":"Water wave","p":"Water wave/Flat/water_wave_flat.svg"},{"n":"Watermelon","p":"Watermelon/Flat/watermelon_flat.svg"},{"n":"Waving hand","p":"Waving hand/Default/Flat/waving_hand_flat_default.svg"},{"n":"Whale","p":"Whale/Flat/whale_flat.svg"},{"n":"Wine glass","p":"Wine glass/Flat/wine_glass_flat.svg"},{"n":"Winking face","p":"Winking face/Flat/winking_face_flat.svg"},{"n":"World map","p":"World map/Flat/world_map_flat.svg"},{"n":"Wrapped gift","p":"Wrapped gift/Flat/wrapped_gift_flat.svg"},{"n":"Wrench","p":"Wrench/Flat/wrench_flat.svg"},{"n":"Writing hand","p":"Writing hand/Default/Flat/writing_hand_flat_default.svg"},{"n":"Yellow heart","p":"Yellow heart/Flat/yellow_heart_flat.svg"}]}};</script>
+<script>window.SUISEI={"url":"https://ygdzcaneqpgkuumibtga.supabase.co","key":"sb_publishable_JvtFENRbPLMdQXbtCLTxRA_FLvKqJea","emojiRef":"1ffb34c752ecf5d402f04cfb4b392c77f57c54bc","emojiCount":1595};</script>
 <script>
 "use strict";
 /* ============================ model ============================ */
@@ -528,7 +539,27 @@ const CFG = window.SUISEI || {};
 /* Microsoft's Fluent Emoji, MIT licensed, served from the repo at a pinned
    commit. Flat is the SVG style: a couple of KB each, so a grid of them is
    cheaper than one 3D png. */
-const EMOJI = CFG.emoji || {ref:'main', list:[]};
+/* The index is 1,595 entries and about 111 KB. Inlining it put that on every
+   page, including one a respondent opens to answer a form and never sees a
+   picker. It is its own file now, fetched the first time the picker opens and
+   kept for the rest of the session. */
+const EMOJI = {ref: CFG.emojiRef || 'main', count: CFG.emojiCount || 0, list: [], state: 'idle'};
+async function loadEmoji(){
+  if(EMOJI.state === 'ready' || EMOJI.state === 'loading') return;
+  EMOJI.state = 'loading';
+  try{
+    const res = await fetch('emoji.json');
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    EMOJI.list = await res.json();
+    EMOJI.state = 'ready';
+  }catch(e){
+    EMOJI.state = 'error';
+  }
+  if(state.panel === 'emoji'){
+    const g = document.getElementById('emoji-grid');
+    if(g) g.innerHTML = emojiGrid();
+  }
+}
 const emojiUrl = p => 'https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@' + EMOJI.ref
   + '/assets/' + String(p).split('/').map(encodeURIComponent).join('/');
 const emojiImg = (p, cls) => `<img class="${cls}" src="${emojiUrl(p)}" alt="" loading="lazy" decoding="async">`;
@@ -732,6 +763,11 @@ const state = {view:'home', formId:null, sel:null, focus:null, menu:null, panel:
 // id must go through here, or a respondent's link lands on an empty workspace
 const formById = id => store.forms[id] || store.visiting[id];
 const form = () => formById(state.formId);
+/* Everything in store.forms is the workspace: yours, or a draft that lives on
+   this device only. A form you are visiting is someone else's, and the editor,
+   the responses and the share panel are all theirs with it. Without this the
+   bar offered Unpublish to a stranger and then told them it had worked. */
+const canEdit = f => !!f && !store.visiting[f.id];
 const bar = document.getElementById('bar');
 const stage = document.getElementById('stage');
 const layer = document.getElementById('layer');
@@ -742,6 +778,7 @@ function toast(msg){
 }
 function go(view, id){
   state.missing = null;
+  if((view==='build' || view==='responses') && !canEdit(formById(id===undefined ? state.formId : id))) view = 'fill';
   if(id!==undefined && id!==state.formId){ state.testHidden = {}; state.runner = null; }
   state.view = view; if(id!==undefined) state.formId = id;
   state.sel = null; state.menu = null; state.panel = null; state.confirmDel = null;
@@ -1008,6 +1045,8 @@ function render(){
     return;
   }
   if(state.view!=='home' && !f && store.ready){ state.view='home'; state.formId=null; }
+  // a link, a back button or an old hash can all ask for the editor
+  if((state.view==='build' || state.view==='responses') && f && !canEdit(f)) state.view = 'fill';
   const snap = snapshotFocus();
   bar.innerHTML = renderBar();
   stage.innerHTML =
@@ -1038,7 +1077,9 @@ function renderBar(){
     </div>`;
   if(state.view==='fill'){
     return `<a class="mark" href="index.html" title="What is Suisei?"><i>水</i>Suisei</a><div class="crumb"><span class="sep">/</span><span>${esc(f.title)}</span></div>
-      <div class="tools"><button class="btn" data-act="exit-fill">${I.back}<span class="hide-sm">Back to editor</span></button></div>`;
+      <div class="tools">${canEdit(f)
+        ? `<button class="btn" data-act="exit-fill">${I.back}<span class="hide-sm">Back to editor</span></button>`
+        : accountBit()}</div>`;
   }
   return `<button class="mark" data-act="home" title="Your forms"><i>水</i>Suisei</button>
     <div class="crumb"><span class="sep">/</span>${f.emoji?emojiImg(f.emoji,"crumbicon"):""}<input id="ftitle-bar" value="${esc(f.title)}" data-bind="title" aria-label="Form name"></div>
@@ -1371,11 +1412,17 @@ function csv(){
 }
 
 /* ============================ panels ============================ */
+const EMOJI_SHOWN = 120;
 function emojiGrid(){
+  if(EMOJI.state === 'loading' || EMOJI.state === 'idle') return `<div class="none">Loading icons…</div>`;
+  if(EMOJI.state === 'error') return `<div class="none">The icon list did not load. Check the connection and reopen this.</div>`;
   const q = (state.emojiQ||'').trim().toLowerCase();
   const hits = EMOJI.list.filter(e => !q || e.n.toLowerCase().includes(q));
   if(!hits.length) return `<div class="none">No icon matches “${esc(q)}”</div>`;
-  return hits.map(e => `<button data-act="pick-emoji" data-p="${esc(e.p)}" title="${esc(e.n)}">${emojiImg(e.p,'')}</button>`).join('');
+  const shown = hits.slice(0, EMOJI_SHOWN);
+  const rest = hits.length - shown.length;
+  return shown.map(e => `<button data-act="pick-emoji" data-p="${esc(e.p)}" title="${esc(e.n)}">${emojiImg(e.p,'')}</button>`).join('')
+    + (rest ? `<div class="none">${rest} more — search to narrow them down</div>` : '');
 }
 function renderPanel(){
   const f = form();
@@ -1386,7 +1433,7 @@ function renderPanel(){
   const p = document.createElement('div'); p.className='panel';
   if(state.panel==='emoji'){
     p.innerHTML = `<h4>Form icon</h4>
-      <div class="fld"><input type="text" id="emoji-q" placeholder="Search ${EMOJI.list.length} icons" aria-label="Search icons" value="${esc(state.emojiQ||'')}"></div>
+      <div class="fld"><input type="text" id="emoji-q" placeholder="Search ${EMOJI.count || EMOJI.list.length} icons" aria-label="Search icons" value="${esc(state.emojiQ||'')}"></div>
       <div class="egrid" id="emoji-grid">${emojiGrid()}</div>
       ${f && f.emoji?`<button class="btn ghost" style="width:100%;justify-content:center;margin-top:var(--sp-3)" data-act="clear-emoji">Remove the icon</button>`:''}
       <p class="note" style="margin-top:var(--sp-3)">Fluent Emoji by Microsoft, MIT licensed.</p>`;
@@ -1402,7 +1449,7 @@ function renderPanel(){
   } else if(state.panel==='customize'){
     const t = f.theme;
     p.innerHTML = `<h4>Customize</h4>
-      <div class="fld"><label>Accent</label><div class="swatches">${ACCENTS.map(c=>`<button style="background:${c}" data-act="th" data-k="accent" data-v="${c}" aria-pressed="${t.accent===c}" aria-label="${c}"></button>`).join('')}</div></div>
+      <div class="fld"><label>Accent</label><div class="swatches">${ACCENTS.map(c=>`<button style="background:${c}" data-act="th" data-k="accent" data-v="${c}" aria-pressed="${t.accent===c}" aria-label="${c}"></button>`).join('')}<input type="color" data-accent value="${esc(t.accent)}" title="A colour of your own" aria-label="A colour of your own"></div></div>
       <div class="fld"><label>Typeface</label><div class="chips">${['sans','serif','mono'].map(k=>`<button data-act="th" data-k="font" data-v="${k}" aria-pressed="${t.font===k}" style="font-family:${FONTS[k]}">${FONT_NAMES[k]}</button>`).join('')}</div></div>
       <div class="fld"><label>Alignment</label><div class="chips">${['left','center'].map(k=>`<button data-act="th" data-k="align" data-v="${k}" aria-pressed="${t.align===k}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div></div>
       <div class="fld"><label>Runner</label><div class="chips">${[['grid','All at once'],['step','One at a time']].map(([k,n])=>`<button data-act="th" data-k="runner" data-v="${k}" aria-pressed="${(t.runner||'grid')===k}">${n}</button>`).join('')}</div></div>
@@ -1587,7 +1634,9 @@ document.addEventListener('click', e=>{
     case 'tab': go(a.dataset.v); break;
     case 'preview': state.panel=null; go('fill', state.formId); break;
     case 'exit-fill': go('build', state.formId); break;
-    case 'emoji': state.panel = state.panel==='emoji'?null:'emoji'; state.emojiQ=''; render(); break;
+    case 'emoji': state.panel = state.panel==='emoji'?null:'emoji'; state.emojiQ='';
+      if(state.panel==='emoji') loadEmoji();
+      render(); break;
     case 'pick-emoji': { f.emoji = a.dataset.p; state.panel=null; dirty(); render(); break; }
     case 'clear-emoji': { f.emoji = ''; state.panel=null; dirty(); render(); break; }
     case 'home': go('home'); break;
@@ -1607,6 +1656,7 @@ document.addEventListener('click', e=>{
       f.theme[k] = v; if(k==='runner') state.runner = null; dirty(); render(); break;
     }
     case 'publish': {
+      if(!canEdit(f)) return;
       f.published = !f.published;
       dirty(); render();
       toast(f.published ? 'Published — the link works now' : 'Unpublished — the link stops working');
@@ -1723,6 +1773,11 @@ document.addEventListener('input', e=>{
     if(t.classList.contains('ftitle')){ fit(t); const b = document.getElementById('ftitle-bar'); if(b) b.value = t.value; }
     return;
   }
+  if(t.hasAttribute && t.hasAttribute('data-accent') && f){
+    f.theme.accent = t.value; store.saveForm(f); state.dirtyUntil = Date.now()+4000;
+    document.querySelectorAll('.canvasform').forEach(el => el.style.setProperty('--f-accent', t.value));
+    return;
+  }
   if(t.dataset.th && f){ f.theme[t.dataset.th] = t.value; store.saveForm(f); state.dirtyUntil = Date.now()+4000; return; }
   if(t.id === 'emoji-q'){
     state.emojiQ = t.value;
@@ -1775,6 +1830,8 @@ document.addEventListener('input', e=>{
 });
 document.addEventListener('change', e=>{
   const t = e.target, f = form();
+  // the drag is over: redraw so the preset swatches agree with the picker
+  if(t.hasAttribute && t.hasAttribute('data-accent') && f){ render(); return; }
   if(t.dataset.rule && f){
     const r = rules(f).find(x=>x.id===t.dataset.rule); if(!r) return;
     const k = t.dataset.k;

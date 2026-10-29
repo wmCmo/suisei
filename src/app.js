@@ -132,7 +132,27 @@ const CFG = window.SUISEI || {};
 /* Microsoft's Fluent Emoji, MIT licensed, served from the repo at a pinned
    commit. Flat is the SVG style: a couple of KB each, so a grid of them is
    cheaper than one 3D png. */
-const EMOJI = CFG.emoji || {ref:'main', list:[]};
+/* The index is 1,595 entries and about 111 KB. Inlining it put that on every
+   page, including one a respondent opens to answer a form and never sees a
+   picker. It is its own file now, fetched the first time the picker opens and
+   kept for the rest of the session. */
+const EMOJI = {ref: CFG.emojiRef || 'main', count: CFG.emojiCount || 0, list: [], state: 'idle'};
+async function loadEmoji(){
+  if(EMOJI.state === 'ready' || EMOJI.state === 'loading') return;
+  EMOJI.state = 'loading';
+  try{
+    const res = await fetch('emoji.json');
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    EMOJI.list = await res.json();
+    EMOJI.state = 'ready';
+  }catch(e){
+    EMOJI.state = 'error';
+  }
+  if(state.panel === 'emoji'){
+    const g = document.getElementById('emoji-grid');
+    if(g) g.innerHTML = emojiGrid();
+  }
+}
 const emojiUrl = p => 'https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@' + EMOJI.ref
   + '/assets/' + String(p).split('/').map(encodeURIComponent).join('/');
 const emojiImg = (p, cls) => `<img class="${cls}" src="${emojiUrl(p)}" alt="" loading="lazy" decoding="async">`;
@@ -336,6 +356,11 @@ const state = {view:'home', formId:null, sel:null, focus:null, menu:null, panel:
 // id must go through here, or a respondent's link lands on an empty workspace
 const formById = id => store.forms[id] || store.visiting[id];
 const form = () => formById(state.formId);
+/* Everything in store.forms is the workspace: yours, or a draft that lives on
+   this device only. A form you are visiting is someone else's, and the editor,
+   the responses and the share panel are all theirs with it. Without this the
+   bar offered Unpublish to a stranger and then told them it had worked. */
+const canEdit = f => !!f && !store.visiting[f.id];
 const bar = document.getElementById('bar');
 const stage = document.getElementById('stage');
 const layer = document.getElementById('layer');
@@ -346,6 +371,7 @@ function toast(msg){
 }
 function go(view, id){
   state.missing = null;
+  if((view==='build' || view==='responses') && !canEdit(formById(id===undefined ? state.formId : id))) view = 'fill';
   if(id!==undefined && id!==state.formId){ state.testHidden = {}; state.runner = null; }
   state.view = view; if(id!==undefined) state.formId = id;
   state.sel = null; state.menu = null; state.panel = null; state.confirmDel = null;
@@ -612,6 +638,8 @@ function render(){
     return;
   }
   if(state.view!=='home' && !f && store.ready){ state.view='home'; state.formId=null; }
+  // a link, a back button or an old hash can all ask for the editor
+  if((state.view==='build' || state.view==='responses') && f && !canEdit(f)) state.view = 'fill';
   const snap = snapshotFocus();
   bar.innerHTML = renderBar();
   stage.innerHTML =
@@ -642,7 +670,9 @@ function renderBar(){
     </div>`;
   if(state.view==='fill'){
     return `<a class="mark" href="index.html" title="What is Suisei?"><i>水</i>Suisei</a><div class="crumb"><span class="sep">/</span><span>${esc(f.title)}</span></div>
-      <div class="tools"><button class="btn" data-act="exit-fill">${I.back}<span class="hide-sm">Back to editor</span></button></div>`;
+      <div class="tools">${canEdit(f)
+        ? `<button class="btn" data-act="exit-fill">${I.back}<span class="hide-sm">Back to editor</span></button>`
+        : accountBit()}</div>`;
   }
   return `<button class="mark" data-act="home" title="Your forms"><i>水</i>Suisei</button>
     <div class="crumb"><span class="sep">/</span>${f.emoji?emojiImg(f.emoji,"crumbicon"):""}<input id="ftitle-bar" value="${esc(f.title)}" data-bind="title" aria-label="Form name"></div>
@@ -975,11 +1005,17 @@ function csv(){
 }
 
 /* ============================ panels ============================ */
+const EMOJI_SHOWN = 120;
 function emojiGrid(){
+  if(EMOJI.state === 'loading' || EMOJI.state === 'idle') return `<div class="none">Loading icons…</div>`;
+  if(EMOJI.state === 'error') return `<div class="none">The icon list did not load. Check the connection and reopen this.</div>`;
   const q = (state.emojiQ||'').trim().toLowerCase();
   const hits = EMOJI.list.filter(e => !q || e.n.toLowerCase().includes(q));
   if(!hits.length) return `<div class="none">No icon matches “${esc(q)}”</div>`;
-  return hits.map(e => `<button data-act="pick-emoji" data-p="${esc(e.p)}" title="${esc(e.n)}">${emojiImg(e.p,'')}</button>`).join('');
+  const shown = hits.slice(0, EMOJI_SHOWN);
+  const rest = hits.length - shown.length;
+  return shown.map(e => `<button data-act="pick-emoji" data-p="${esc(e.p)}" title="${esc(e.n)}">${emojiImg(e.p,'')}</button>`).join('')
+    + (rest ? `<div class="none">${rest} more — search to narrow them down</div>` : '');
 }
 function renderPanel(){
   const f = form();
@@ -990,7 +1026,7 @@ function renderPanel(){
   const p = document.createElement('div'); p.className='panel';
   if(state.panel==='emoji'){
     p.innerHTML = `<h4>Form icon</h4>
-      <div class="fld"><input type="text" id="emoji-q" placeholder="Search ${EMOJI.list.length} icons" aria-label="Search icons" value="${esc(state.emojiQ||'')}"></div>
+      <div class="fld"><input type="text" id="emoji-q" placeholder="Search ${EMOJI.count || EMOJI.list.length} icons" aria-label="Search icons" value="${esc(state.emojiQ||'')}"></div>
       <div class="egrid" id="emoji-grid">${emojiGrid()}</div>
       ${f && f.emoji?`<button class="btn ghost" style="width:100%;justify-content:center;margin-top:var(--sp-3)" data-act="clear-emoji">Remove the icon</button>`:''}
       <p class="note" style="margin-top:var(--sp-3)">Fluent Emoji by Microsoft, MIT licensed.</p>`;
@@ -1006,7 +1042,7 @@ function renderPanel(){
   } else if(state.panel==='customize'){
     const t = f.theme;
     p.innerHTML = `<h4>Customize</h4>
-      <div class="fld"><label>Accent</label><div class="swatches">${ACCENTS.map(c=>`<button style="background:${c}" data-act="th" data-k="accent" data-v="${c}" aria-pressed="${t.accent===c}" aria-label="${c}"></button>`).join('')}</div></div>
+      <div class="fld"><label>Accent</label><div class="swatches">${ACCENTS.map(c=>`<button style="background:${c}" data-act="th" data-k="accent" data-v="${c}" aria-pressed="${t.accent===c}" aria-label="${c}"></button>`).join('')}<input type="color" data-accent value="${esc(t.accent)}" title="A colour of your own" aria-label="A colour of your own"></div></div>
       <div class="fld"><label>Typeface</label><div class="chips">${['sans','serif','mono'].map(k=>`<button data-act="th" data-k="font" data-v="${k}" aria-pressed="${t.font===k}" style="font-family:${FONTS[k]}">${FONT_NAMES[k]}</button>`).join('')}</div></div>
       <div class="fld"><label>Alignment</label><div class="chips">${['left','center'].map(k=>`<button data-act="th" data-k="align" data-v="${k}" aria-pressed="${t.align===k}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div></div>
       <div class="fld"><label>Runner</label><div class="chips">${[['grid','All at once'],['step','One at a time']].map(([k,n])=>`<button data-act="th" data-k="runner" data-v="${k}" aria-pressed="${(t.runner||'grid')===k}">${n}</button>`).join('')}</div></div>
@@ -1191,7 +1227,9 @@ document.addEventListener('click', e=>{
     case 'tab': go(a.dataset.v); break;
     case 'preview': state.panel=null; go('fill', state.formId); break;
     case 'exit-fill': go('build', state.formId); break;
-    case 'emoji': state.panel = state.panel==='emoji'?null:'emoji'; state.emojiQ=''; render(); break;
+    case 'emoji': state.panel = state.panel==='emoji'?null:'emoji'; state.emojiQ='';
+      if(state.panel==='emoji') loadEmoji();
+      render(); break;
     case 'pick-emoji': { f.emoji = a.dataset.p; state.panel=null; dirty(); render(); break; }
     case 'clear-emoji': { f.emoji = ''; state.panel=null; dirty(); render(); break; }
     case 'home': go('home'); break;
@@ -1211,6 +1249,7 @@ document.addEventListener('click', e=>{
       f.theme[k] = v; if(k==='runner') state.runner = null; dirty(); render(); break;
     }
     case 'publish': {
+      if(!canEdit(f)) return;
       f.published = !f.published;
       dirty(); render();
       toast(f.published ? 'Published — the link works now' : 'Unpublished — the link stops working');
@@ -1327,6 +1366,11 @@ document.addEventListener('input', e=>{
     if(t.classList.contains('ftitle')){ fit(t); const b = document.getElementById('ftitle-bar'); if(b) b.value = t.value; }
     return;
   }
+  if(t.hasAttribute && t.hasAttribute('data-accent') && f){
+    f.theme.accent = t.value; store.saveForm(f); state.dirtyUntil = Date.now()+4000;
+    document.querySelectorAll('.canvasform').forEach(el => el.style.setProperty('--f-accent', t.value));
+    return;
+  }
   if(t.dataset.th && f){ f.theme[t.dataset.th] = t.value; store.saveForm(f); state.dirtyUntil = Date.now()+4000; return; }
   if(t.id === 'emoji-q'){
     state.emojiQ = t.value;
@@ -1379,6 +1423,8 @@ document.addEventListener('input', e=>{
 });
 document.addEventListener('change', e=>{
   const t = e.target, f = form();
+  // the drag is over: redraw so the preset swatches agree with the picker
+  if(t.hasAttribute && t.hasAttribute('data-accent') && f){ render(); return; }
   if(t.dataset.rule && f){
     const r = rules(f).find(x=>x.id===t.dataset.rule); if(!r) return;
     const k = t.dataset.k;
