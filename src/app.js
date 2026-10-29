@@ -686,7 +686,7 @@ function renderBuild(){
     }
     return shell + rules(f).filter(r=>r.when===b.id).map(r=>ruleCard(r,f)).join('');
   }).join('');
-  return `<div class="canvasform" data-bg="${f.theme.bg}" data-align="${f.theme.align}" style="${themeVars(f)};min-height:calc(100vh - 52px)">
+  return `<div class="canvasform" data-bg="${f.theme.bg}" data-align="${f.theme.align}" style="${themeVars(f)}">
     <div class="col">
       <button class="formicon" data-act="emoji" title="${f.emoji?'Change the icon':'Add an icon'}">${
         f.emoji ? emojiImg(f.emoji,'') : '<span class="addicon">+ Icon</span>'}</button>
@@ -808,7 +808,7 @@ function renderFill(){
   const total = stepped ? steps.length : pages.length;
   const at = stepped ? state.step : state.page;
   const toggle = `<button class="runner" data-act="runner">${stepped ? 'Show every question at once' : 'Answer one question at a time'}</button>`;
-  const shell = inner => `<div class="canvasform" data-bg="${t.bg}" data-align="${t.align}" data-runner="${stepped?'step':'grid'}" style="${themeVars(f)};min-height:calc(100vh - 52px)">
+  const shell = inner => `<div class="canvasform" data-bg="${t.bg}" data-align="${t.align}" data-runner="${stepped?'step':'grid'}" style="${themeVars(f)}">
       ${total>1 && !state.done?`<div class="progress"><i style="width:${Math.round(at/total*100)}%"></i></div>`:''}
       <div class="col">${inner}</div></div><a class="badge" href="index.html">Made with Suisei</a>`;
   if(state.done){

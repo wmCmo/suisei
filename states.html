@@ -6,7 +6,7 @@
 <meta name="description" content="Every block in every state, rendered by the real components.">
 <title>Suisei states</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Old+Mincho:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Old+Mincho:wght@400;700&family=Noto+Sans+Thai:wght@400;500;700&family=Noto+Serif+Thai:wght@400;700&display=swap">
 <style>
 /* Decisions only. Every rule in this file declares custom properties and
    nothing else -- that is the test for whether a line belongs here. If a
@@ -29,9 +29,10 @@
   --fg:#15181a; --muted:#5d6165; --faint:#7a7d81;
   --accent:#1f4d52; --accent-fg:#fbfaf8; --soft:#d8e3e2;
   --ok:#1f4d52; --warn:#a85b14; --warn-soft:#f0e4d2; --danger:#a33224;
-  --ui:'Zen Kaku Gothic New','Hiragino Sans','Yu Gothic UI',system-ui,sans-serif;
-  --serif:'Zen Old Mincho','Hiragino Mincho ProN','Yu Mincho',Georgia,serif;
-  --mono:ui-monospace,'Cascadia Mono','SFMono-Regular',Menlo,monospace;
+  --ui:'Zen Kaku Gothic New','Noto Sans Thai','Hiragino Sans','Yu Gothic UI',system-ui,sans-serif;
+  --serif:'Zen Old Mincho','Noto Serif Thai','Hiragino Mincho ProN','Yu Mincho',Georgia,serif;
+  --mono:ui-monospace,'Cascadia Mono','SFMono-Regular',Menlo,'Noto Sans Thai',monospace;
+  --bar-h:52px;
   --r-sm:6px; --r:9px; --r-lg:14px; --r-pill:999px;
   --on-accent:#fbfaf8; --scrim:rgba(21,24,26,.34); --shadow-sm:0 1px 2px rgba(21,24,26,.08);
   --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px; --sp-7:48px; --sp-8:64px;
@@ -103,7 +104,7 @@ svg{display:block}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--r-sm)}
 
 /* ---------- command bar ---------- */
-.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;display:flex;align-items:center;gap:var(--sp-2);height:52px;
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;display:flex;align-items:center;gap:var(--sp-2);height:var(--bar-h);
   background:var(--surface);border-bottom:1px solid var(--line);
   padding-left:max(var(--sp-3),env(safe-area-inset-left,0px));padding-right:max(var(--sp-3),env(safe-area-inset-right,0px))}
 /* an anchor with no colour of its own gets the browser's visited purple */
@@ -130,6 +131,12 @@ svg{display:block}
 
 /* ---------- stage ---------- */
 .stage{padding-bottom:var(--sp-8)}
+/* a form fills the screen on its own: its own padding is the breathing room,
+   and the stage's would push a short form into a scroll it does not need */
+.stage:has(>.canvasform){padding-bottom:0}
+/* a form fills the screen under the bar. dvh tracks a phone browser's own
+   chrome as it collapses; the vh line above it is the fallback, not a rounding */
+.stage>.canvasform{min-height:calc(100vh - var(--bar-h));min-height:calc(100dvh - var(--bar-h))}
 .wrap{max-width:1100px;margin:0 auto;padding-left:max(var(--sp-4),env(safe-area-inset-left,0px));padding-right:max(var(--sp-4),env(safe-area-inset-right,0px));padding-block:var(--sp-5)}
 .lede{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--sp-4);flex-wrap:wrap;margin-bottom:var(--sp-4)}
 .lede h1{font-size:var(--fs-h1);line-height:var(--lh-h1);letter-spacing:-.025em}
@@ -322,7 +329,9 @@ td.when{color:var(--muted);font-variant-numeric:tabular-nums}
 .q-h2{font-size:var(--fs-h2);line-height:var(--lh-h2);letter-spacing:-.02em;margin:var(--sp-4) 0 var(--sp-2)}
 .q-text{color:var(--f-muted);margin:0 0 var(--sp-4)}
 .counter{color:var(--f-muted);font-size:var(--fs-caption);line-height:var(--lh-caption);font-family:var(--mono)}
-.canvasform[data-runner="step"] .col{padding-block:var(--sp-8) var(--sp-7)}
+.canvasform[data-runner="step"]{display:flex;flex-direction:column}
+/* auto margins centre a short step and still let a long one scroll from its top */
+.canvasform[data-runner="step"] .col{margin-block:auto;padding-block:var(--sp-8) var(--sp-7)}
 .q .ql-xl{font-size:var(--fs-display);line-height:var(--lh-display);font-weight:700;letter-spacing:-.025em;margin-bottom:var(--sp-5)}
 .runner{display:block;margin-top:var(--sp-7);color:var(--f-muted);font-size:var(--fs-caption);line-height:var(--lh-caption);text-decoration:underline;text-underline-offset:3px}
 .runner:hover{color:var(--f-accent-text)}
@@ -1067,7 +1076,7 @@ function renderBuild(){
     }
     return shell + rules(f).filter(r=>r.when===b.id).map(r=>ruleCard(r,f)).join('');
   }).join('');
-  return `<div class="canvasform" data-bg="${f.theme.bg}" data-align="${f.theme.align}" style="${themeVars(f)};min-height:calc(100vh - 52px)">
+  return `<div class="canvasform" data-bg="${f.theme.bg}" data-align="${f.theme.align}" style="${themeVars(f)}">
     <div class="col">
       <button class="formicon" data-act="emoji" title="${f.emoji?'Change the icon':'Add an icon'}">${
         f.emoji ? emojiImg(f.emoji,'') : '<span class="addicon">+ Icon</span>'}</button>
@@ -1189,7 +1198,7 @@ function renderFill(){
   const total = stepped ? steps.length : pages.length;
   const at = stepped ? state.step : state.page;
   const toggle = `<button class="runner" data-act="runner">${stepped ? 'Show every question at once' : 'Answer one question at a time'}</button>`;
-  const shell = inner => `<div class="canvasform" data-bg="${t.bg}" data-align="${t.align}" data-runner="${stepped?'step':'grid'}" style="${themeVars(f)};min-height:calc(100vh - 52px)">
+  const shell = inner => `<div class="canvasform" data-bg="${t.bg}" data-align="${t.align}" data-runner="${stepped?'step':'grid'}" style="${themeVars(f)}">
       ${total>1 && !state.done?`<div class="progress"><i style="width:${Math.round(at/total*100)}%"></i></div>`:''}
       <div class="col">${inner}</div></div><a class="badge" href="index.html">Made with Suisei</a>`;
   if(state.done){
