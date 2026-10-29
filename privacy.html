@@ -344,6 +344,19 @@ td.when{color:var(--muted);font-variant-numeric:tabular-nums}
 
 /* catches a click that misses the menu, so it cannot reach a field below */
 .menu-scrim{position:fixed;inset:0;z-index:59}
+
+/* a stepper whose buttons do not move when the thing they resize changes */
+.stepper{display:flex;align-items:center;gap:var(--sp-2);margin-top:var(--sp-2)}
+.stepper .lg{font-size:var(--fs-micro);line-height:var(--lh-micro);font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--f-muted)}
+.stepper button{width:24px;height:24px;display:grid;place-items:center;border:1px solid var(--f-line);border-radius:var(--r-sm);color:var(--f-muted)}
+.stepper button:hover{border-color:var(--f-accent);color:var(--f-accent-text)}
+.stepper b{min-width:24px;text-align:center;font-variant-numeric:tabular-nums;font-weight:500}
+/* end labels, made to look like the inputs they always were */
+.ends{display:flex;align-items:center;gap:var(--sp-2);margin-top:var(--sp-2);flex-wrap:wrap}
+.ends .lg{font-size:var(--fs-micro);line-height:var(--lh-micro);font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--f-muted)}
+.ends input{flex:1;min-width:0;background:var(--f-bg);border:1px solid var(--f-line);border-radius:var(--r-sm);padding:var(--sp-1) var(--sp-2);font-size:var(--fs-caption);line-height:var(--lh-caption);font-family:inherit;color:inherit}
+.ends input:focus{outline:none;border-color:var(--f-accent-text)}
+.pill.bad{color:var(--warn)}
 </style>
 <style>
 .doc{max-width:640px;margin:0 auto}

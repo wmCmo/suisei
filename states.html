@@ -344,6 +344,19 @@ td.when{color:var(--muted);font-variant-numeric:tabular-nums}
 
 /* catches a click that misses the menu, so it cannot reach a field below */
 .menu-scrim{position:fixed;inset:0;z-index:59}
+
+/* a stepper whose buttons do not move when the thing they resize changes */
+.stepper{display:flex;align-items:center;gap:var(--sp-2);margin-top:var(--sp-2)}
+.stepper .lg{font-size:var(--fs-micro);line-height:var(--lh-micro);font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--f-muted)}
+.stepper button{width:24px;height:24px;display:grid;place-items:center;border:1px solid var(--f-line);border-radius:var(--r-sm);color:var(--f-muted)}
+.stepper button:hover{border-color:var(--f-accent);color:var(--f-accent-text)}
+.stepper b{min-width:24px;text-align:center;font-variant-numeric:tabular-nums;font-weight:500}
+/* end labels, made to look like the inputs they always were */
+.ends{display:flex;align-items:center;gap:var(--sp-2);margin-top:var(--sp-2);flex-wrap:wrap}
+.ends .lg{font-size:var(--fs-micro);line-height:var(--lh-micro);font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--f-muted)}
+.ends input{flex:1;min-width:0;background:var(--f-bg);border:1px solid var(--f-line);border-radius:var(--r-sm);padding:var(--sp-1) var(--sp-2);font-size:var(--fs-caption);line-height:var(--lh-caption);font-family:inherit;color:inherit}
+.ends input:focus{outline:none;border-color:var(--f-accent-text)}
+.pill.bad{color:var(--warn)}
 </style>
 <style>
 /* This page is a mirror, not a component of its own: everything below is
@@ -514,7 +527,7 @@ const rowToSub = r => ({id:r.id, formId:r.form_id, createdAt:new Date(r.created_
                         answers:r.answers||{}, hidden:r.hidden||{}});
 
 const store = {
-  sb, user:null, ready:false, downloads:null, editor:false, offline:!sb, hasPublished:null,
+  sb, user:null, ready:false, downloads:null, editor:false, offline:!sb, hasPublished:null, saveState:'idle',
   forms:{}, subs:[], remote:[], counts:{}, onSubs:null, onSubsId:null, lastError:null,
   readLocal(){ try{ return JSON.parse(localStorage.getItem(LS)||'{}') }catch(e){ return {} } },
   writeLocal(){ try{ localStorage.setItem(LS, JSON.stringify({forms:this.forms, subs:this.subs.filter(s=>s.local)})) }catch(e){} },
@@ -591,10 +604,23 @@ const store = {
     this.counts = c; render();
   },
 
+  saveLabel(){
+    if(!sb || !this.user) return 'this device';
+    return {saving:'Saving…', saved:'Saved', error:'Not saved'}[this.saveState] || 'Saved';
+  },
+  // repaint one element rather than re-rendering: a save indicator that caused
+  // a full render on every keystroke would be its own bug
+  paintSave(){
+    const el = document.getElementById('savestate');
+    if(!el) return;
+    el.textContent = this.saveLabel();
+    el.className = 'pill' + (this.saveState === 'error' ? ' bad' : '');
+  },
   saveForm(f){
     f.updatedAt = Date.now();
     this.forms[f.id] = f;
     this.writeLocal();
+    if(sb && this.user){ this.saveState = 'saving'; this.paintSave(); }
     clearTimeout(this._t);
     this._t = setTimeout(async () => {
       if(!sb || !this.user) return;                     // signed out: this device only
@@ -607,8 +633,8 @@ const store = {
         delete row.published;
         ({error} = await sb.from('forms').upsert(row, {onConflict:'id'}));
       }
-      if(error){ this.lastError = error.message; console.warn('save', error); render(); }
-      else if(this.lastError){ this.lastError = null; render(); }
+      if(error){ this.lastError = error.message; this.saveState = 'error'; console.warn('save', error); this.paintSave(); render(); }
+      else { this.saveState = 'saved'; this.paintSave(); if(this.lastError){ this.lastError = null; render(); } }
     }, 600);
   },
 
@@ -903,6 +929,35 @@ function accountBit(){
   return `<button class="btn" data-act="account" title="${esc(store.user.email||'')}"><span class="pill live">signed in</span></button>`;
 }
 
+/* The editor rebuilds its markup on every structural change, so the caret and
+   the scroll position have to be carried across by hand. This does not make the
+   rebuild cheap; it makes it invisible. */
+function snapshotFocus(){
+  const el = document.activeElement;
+  const snap = {scroll: window.scrollY};
+  if(el && el !== document.body && (el.dataset.block || el.id)){
+    snap.block = el.dataset.block; snap.field = el.dataset.field; snap.opt = el.dataset.opt;
+    snap.id = el.id;
+    try{ snap.start = el.selectionStart; snap.end = el.selectionEnd; }catch(e){}
+  }
+  return snap;
+}
+function restoreFocus(snap){
+  if(!snap) return;
+  if(!state.focus && (snap.block || snap.id)){
+    const sel = snap.block
+      ? (snap.opt ? `[data-block="${snap.block}"][data-opt="${snap.opt}"]`
+                  : `[data-block="${snap.block}"][data-field="${snap.field}"]`)
+      : null;
+    const el = sel ? document.querySelector(sel) : document.getElementById(snap.id);
+    if(el && el !== document.activeElement){
+      el.focus();
+      if(snap.start != null){ try{ el.setSelectionRange(snap.start, snap.end); }catch(e){} }
+    }
+  }
+  if(Math.abs(window.scrollY - snap.scroll) > 1) window.scrollTo(0, snap.scroll);
+}
+
 /* ============================ render: shell ============================ */
 function render(){
   const f = form();
@@ -914,6 +969,7 @@ function render(){
     return;
   }
   if(state.view!=='home' && !f && store.ready){ state.view='home'; state.formId=null; }
+  const snap = snapshotFocus();
   bar.innerHTML = renderBar();
   stage.innerHTML =
     state.view==='home' ? renderHome() :
@@ -923,6 +979,7 @@ function render(){
   layer.querySelectorAll('.panel,.scrim').forEach(n=>n.remove());
   if(state.panel) renderPanel();
   if(state.view==='build') afterBuild();
+  restoreFocus(snap);
 }
 function renderMissing(){
   return `<div class="wrap"><div class="empty" style="margin-top:var(--sp-8)">
@@ -948,6 +1005,7 @@ function renderBar(){
     <div class="crumb"><span class="sep">/</span>${f.emoji?emojiImg(f.emoji,"crumbicon"):""}<input id="ftitle-bar" value="${esc(f.title)}" data-bind="title" aria-label="Form name"></div>
     ${tabs}
     <div class="tools">
+      <span class="pill" id="savestate">${store.saveLabel()}</span>
       ${accountBit()}
       <button class="btn" data-act="customize" title="Customize">${I.paint}<span class="hide-sm">Customize</span></button>
       <button class="btn" data-act="preview">${I.eye}<span class="hide-sm">Preview</span></button>
@@ -1071,6 +1129,15 @@ function ruleCard(r, f){
     <button class="rm" data-act="del-logic" data-id="${r.id}" title="Remove rule">×</button>
   </div>`;
 }
+/* The - and + used to sit after the row they resized, so each click moved the
+   button out from under the cursor. Here the count is fixed-width and the
+   buttons never move. */
+function stepper(b, noun){
+  return `<div class="stepper"><span class="lg">${noun}</span>
+    <button data-act="rate-less" data-id="${b.id}" aria-label="One fewer">−</button>
+    <b>${b.max}</b>
+    <button data-act="rate-more" data-id="${b.id}" aria-label="One more">+</button></div>`;
+}
 function fieldPreview(b){
   const t = b.type;
   if(t==='long_text') return `<textarea class="fi" rows="3" data-block="${b.id}" data-field="placeholder" placeholder="Type your answer…">${esc(b.placeholder)}</textarea>`;
@@ -1084,13 +1151,13 @@ function fieldPreview(b){
       </div>`).join('');
     return `<div class="opts">${rows}<button class="addopt" data-act="add-opt" data-id="${b.id}">+ Add option</button></div>`;
   }
-  if(t==='rating') return `<div class="stars">${Array.from({length:b.max},(_,k)=>`<span class="on">${I.star}</span>`).join('')}
-      <button class="addopt" style="padding:0 6px" data-act="rate-less" data-id="${b.id}">−</button>
-      <button class="addopt" style="padding:0 6px" data-act="rate-more" data-id="${b.id}">+</button></div>`;
-  if(t==='scale') return `<div class="scale">${Array.from({length:b.max},(_,k)=>`<span>${k+1}</span>`).join('')}
-      <button class="addopt" style="padding:0 6px" data-act="rate-less" data-id="${b.id}">−</button>
-      <button class="addopt" style="padding:0 6px" data-act="rate-more" data-id="${b.id}">+</button></div>
-      <div class="scale-ends"><input value="${esc(b.left)}" data-block="${b.id}" data-field="left" placeholder="Left label"><input value="${esc(b.right)}" data-block="${b.id}" data-field="right" placeholder="Right label"></div>`;
+  if(t==='rating') return `<div class="stars">${Array.from({length:b.max},(_,k)=>`<span class="on">${I.star}</span>`).join('')}</div>
+      ${stepper(b, 'stars')}`;
+  if(t==='scale') return `<div class="scale">${Array.from({length:b.max},(_,k)=>`<span>${k+1}</span>`).join('')}</div>
+      ${stepper(b, 'points')}
+      <div class="ends"><span class="lg">End labels</span>
+        <input value="${esc(b.left)}" data-block="${b.id}" data-field="left" placeholder="low end, or leave empty">
+        <input value="${esc(b.right)}" data-block="${b.id}" data-field="right" placeholder="high end, or leave empty"></div>`;
   if(t==='file') return `<div class="drop">Drop a file or click to upload</div>`;
   if(t==='date') return `<input class="fi" type="date" disabled style="max-width:220px">`;
   return `<input class="fi" value="${esc(b.placeholder)}" data-block="${b.id}" data-field="placeholder" placeholder="Placeholder text">`;
@@ -1186,7 +1253,7 @@ function renderQ(b, big){
   else if(b.type==='dropdown') ctl = `<select class="fi" data-a="${b.id}" style="max-width:340px"><option value="">Select…</option>${b.options.map(o=>`<option value="${o.id}"${v===o.id?' selected':''}>${esc(o.text)}</option>`).join('')}</select>`;
   else if(b.type==='rating') ctl = `<div class="stars">${Array.from({length:b.max},(_,k)=>`<button data-act="rate" data-id="${b.id}" data-v="${k+1}" class="${v>=k+1?'on':''}" aria-label="${k+1} of ${b.max}">${I.star}</button>`).join('')}</div>`;
   else if(b.type==='scale') ctl = `<div class="scale">${Array.from({length:b.max},(_,k)=>`<button data-act="rate" data-id="${b.id}" data-v="${k+1}" class="${v===k+1?'on':''}">${k+1}</button>`).join('')}</div>
-      <div class="scale-ends"><span>${esc(b.left)}</span><span>${esc(b.right)}</span></div>`;
+      ${(b.left||b.right)?`<div class="scale-ends"><span>${esc(b.left)}</span><span>${esc(b.right)}</span></div>`:''}`;
   else if(b.type==='file') ctl = `<label class="drop" style="display:block;cursor:pointer">${v?esc(v):'Drop a file or click to upload'}<input type="file" data-a="${b.id}" hidden></label>`;
   else {
     const types = {number:'number',email:'email',phone:'tel',url:'url',date:'date'};
@@ -1231,7 +1298,7 @@ function renderResponses(){
     <div class="lede"><div><h1>Responses</h1><p>${rows.length} submission${rows.length===1?'':'s'} to “${esc(f.title)}”.</p></div>
       <div class="tools">
         <button class="btn ghost" data-act="copy-csv">${I.copy}Copy CSV</button>
-        ${store.downloads?`<button class="btn ghost" data-act="dl-csv">${I.down}Download CSV</button>`:''}
+        <button class="btn ghost" data-act="dl-csv">${I.down}Download CSV</button>
       </div></div>
     ${stats}${bds?`<div class="breakdown">${bds}</div>`:''}
     <div class="tablewrap"><table><thead>${head}</thead><tbody>${body}</tbody></table></div>
@@ -1592,9 +1659,19 @@ function selectFallback(txt){
   ta.style.cssText = 'position:fixed;left:-9999px'; document.body.appendChild(ta); ta.select();
   toast('Select and copy — the clipboard is blocked here'); setTimeout(()=>ta.remove(), 8000);
 }
-async function dlCsv(){
-  try{ await store.downloads.save({filename:(form().title||'responses').replace(/[^\w\- ]+/g,'')+'.csv', data:csv()}); toast('Saved'); }
-  catch(e){ copy(csv()); }
+function dlCsv(){
+  const text = csv();
+  const name = ((form().title || 'responses').replace(/[^\w฀-๿\- ]+/g,'').trim() || 'responses') + '.csv';
+  try{
+    // the BOM is what makes Excel read a UTF-8 CSV as UTF-8; without it Thai
+    // answers open as mojibake, which is the whole point of exporting
+    const url = URL.createObjectURL(new Blob(['﻿' + text], {type:'text/csv;charset=utf-8'}));
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast('Downloaded ' + name);
+  }catch(e){ copy(text); }
 }
 
 /* text binding (no re-render, so the caret stays put) */

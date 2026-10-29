@@ -98,7 +98,9 @@ node scripts/emoji.mjs --latest   # repin to current main, then re-verify
 button label and thank-you message, per form, live in the editor.
 
 **Responses** — count, latest, average completion, per-question breakdown bars,
-the full table, Copy CSV.
+the full table, Copy CSV and Download CSV. The download carries a byte order
+mark, without which Excel reads a UTF-8 export as mojibake — which matters the
+moment a form is answered in anything but English.
 
 ## Signing in
 
