@@ -650,7 +650,7 @@ function render(){
   layer.querySelectorAll('.panel,.scrim').forEach(n=>n.remove());
   if(state.panel) renderPanel();
   if(state.view==='build') afterBuild();
-  restoreFocus(snap);
+  restoreFocus(directed ? null : snap);
 }
 function renderMissing(){
   return `<div class="wrap"><div class="empty" style="margin-top:var(--sp-8)">
@@ -797,6 +797,7 @@ function ruleCard(r, f){
     ${sel('op', OPS[kind].map(([v,n])=>`<option value="${v}"${r.op===v?' selected':''}>${n}</option>`).join(''))}
     ${val}
     <span class="lg">Then</span>
+  const directed = !!state.focus;      // read it before afterBuild() clears it
     ${sel('do', DOS.map(([v,n])=>`<option value="${v}"${r.do===v?' selected':''}>${n}</option>`).join(''))}
     ${target}
     <button class="rm" data-act="del-logic" data-id="${r.id}" title="Remove rule">×</button>
@@ -1637,3 +1638,16 @@ store.boot = async function(){
   if(fromHash()) render();
 };
 if(bar && stage) store.boot();
+    if(t.classList && t.classList.contains('ftitle') && e.key==='Enter' && !e.shiftKey){
+      e.preventDefault();
+      const first = f.blocks[0];
+      // an untouched first block is somewhere to go, not something to push down
+      if(first && !first.label){
+        state.sel = first.id; state.focus = {id:first.id, field:'label'};
+      } else {
+        const nb = block('text','');
+        f.blocks.unshift(nb); state.sel = nb.id; state.focus = {id:nb.id, field:'label'};
+        store.saveForm(f); state.dirtyUntil = Date.now()+4000;
+      }
+      render(); return;
+    }
