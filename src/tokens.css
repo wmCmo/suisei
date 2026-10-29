@@ -26,6 +26,9 @@
      about a kilobyte and never touches the text faces above. */
   --mark:'Noto Sans JP','Zen Kaku Gothic New',system-ui,sans-serif;
   --bar-h:52px;
+  /* the and/or column in a logic rule — the same at every depth, or nesting
+     stops lining up with itself */
+  --logic-join:58px;
   --r-sm:6px; --r:9px; --r-lg:14px; --r-pill:999px;
   --on-accent:#fbfaf8; --scrim:rgba(21,24,26,.34); --shadow-sm:0 1px 2px rgba(21,24,26,.08);
   --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px; --sp-7:48px; --sp-8:64px;
@@ -52,24 +55,37 @@
 }
 /* A forced sheet also forces the UA's own widgets — scrollbars, selects,
    date pickers — so they don't arrive in the opposite theme. */
-.canvasform[data-bg="light"]{--f-bg:#fbfaf8;--f-fg:#15181a;--f-line:#d8d4ce;--f-soft:#e2dfda;--f-muted:#5d6165;--f-wash:var(--f-wash-light);color-scheme:light}
-.canvasform[data-bg="dark"]{--f-bg:#171c20;--f-fg:#f2efea;--f-line:#2b343b;--f-soft:#12171b;--f-muted:#a9b2b8;--f-wash:var(--f-wash-dark);color-scheme:dark}
+.canvasform[data-bg="light"]{--f-bg:#fbfaf8;--f-fg:#15181a;--f-neutral-line:#d8d4ce;--f-soft:#e2dfda;--f-muted:#5d6165;--f-wash:var(--f-wash-light);color-scheme:light}
+.canvasform[data-bg="dark"]{--f-bg:#171c20;--f-fg:#f2efea;--f-neutral-line:#2b343b;--f-soft:#12171b;--f-muted:#a9b2b8;--f-wash:var(--f-wash-dark);--f-caret:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a9b2b8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");color-scheme:dark}
 /* The accent is picked by whoever built the form, so it can be a deep colour
    that disappears as text on a dark sheet. Fills keep the chosen colour;
    text and small marks take a lifted version of it. */
 .canvasform[data-bg="dark"],
-:root[data-theme="dark"] .canvasform[data-bg="auto"]{--f-accent-text:color-mix(in srgb,var(--f-accent) 48%,#f2efea);--f-wash:var(--f-wash-dark)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .canvasform[data-bg="auto"]{--f-accent-text:color-mix(in srgb,var(--f-accent) 48%,#f2efea);--f-wash:var(--f-wash-dark)}}
+:root[data-theme="dark"] .canvasform[data-bg="auto"]{--f-accent-text:color-mix(in srgb,var(--f-accent) 48%,#f2efea);--f-wash:var(--f-wash-dark);--f-caret:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a9b2b8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .canvasform[data-bg="auto"]{--f-accent-text:color-mix(in srgb,var(--f-accent) 48%,#f2efea);--f-wash:var(--f-wash-dark);--f-caret:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a9b2b8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}}
 
 /* The form sheet carries its own set, so a form can be themed
    independently of the app around it. */
-.canvasform{--f-bg:var(--surface);--f-fg:var(--fg);--f-line:var(--line);--f-soft:var(--sunk);--f-muted:var(--muted);--f-wash:var(--f-wash-light);--f-accent:#1f4d52;--f-accent-text:var(--f-accent);--f-r:9px;--f-font:var(--ui);
+.canvasform{--f-bg:var(--surface);--f-fg:var(--fg);--f-neutral-line:var(--line);--f-soft:var(--sunk);--f-muted:var(--muted);--f-wash:var(--f-wash-light);--f-accent:#1f4d52;--f-accent-text:var(--f-accent);--f-r:9px;--f-font:var(--ui);
   /* The accent used to paint one thing while every tint around it stayed the
      teal it was born with, so changing the swatch barely changed the form.
      The wash is now mixed from whatever the accent is: more of it on a dark
      sheet, where 14% of anything disappears. */
+  /* opacity on a coloured element invents a colour no token defines — it is
+     whatever happens to be behind it. This is the quiet step of --f-muted,
+     mixed on purpose. */
+  --f-faint:color-mix(in srgb,var(--f-muted) 58%,var(--f-bg));
   --f-wash-light:color-mix(in srgb,var(--f-accent) 14%,var(--f-bg));
-  --f-wash-dark:color-mix(in srgb,var(--f-accent) 40%,var(--f-bg))}
+  --f-wash-dark:color-mix(in srgb,var(--f-accent) 40%,var(--f-bg));
+  /* The wash follows the accent but the borders were a fixed warm grey, so a
+     cool accent put cool tint behind warm lines and the two read as different
+     families. A neutral carrying a trace of the accent belongs to it. */
+  --f-line:color-mix(in srgb,var(--f-accent) 12%,var(--f-neutral-line));
+  /* A native select draws its own arrow wherever the platform likes, which
+     is not where our padding ends. Ours is an image, so it sits where we
+     put it. The colour has to be baked into the URL — a data URI cannot
+     read currentColor — which is exactly why it is declared here. */
+  --f-caret:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%235d6165' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
 
 /* Type. Nine steps, each carrying its own line-height, replacing the
    twenty sizes that were picked one rule at a time. Sizes only -- the

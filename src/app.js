@@ -462,7 +462,10 @@ function themeVars(f){
 
 /* ---------- conditional logic ---------- */
 const OPS = {
-  pick:[['is','is'],['is_not','is not'],['empty','is empty'],['not_empty','is answered']],
+  // 'is' and 'is_not' keep their stored values, so rules written before groups
+  // existed still mean what they meant; only the wording admits that a choice
+  // condition can now hold several options
+  pick:[['is','is any of'],['is_not','is none of'],['empty','is empty'],['not_empty','is answered']],
   num:[['is','is'],['is_not','is not'],['gt','is more than'],['lt','is less than'],['empty','is empty'],['not_empty','is answered']],
   text:[['is','is'],['is_not','is not'],['contains','contains'],['empty','is empty'],['not_empty','is answered']],
 };
@@ -473,6 +476,81 @@ function opKind(t){
   return 'text';
 }
 function rules(f){ return f.logic || (f.logic = []); }
+
+/* ---------- condition trees ----------
+
+   A rule used to be flat: one when/op/value, one action. It now carries a
+   group — {match:'all'|'any', conds:[…]} — and a group's children are either
+   conditions or further groups, which is what makes AND inside OR possible.
+
+   Rules saved before this still exist, in this browser and in forms already
+   published, so nothing migrates on load: condsOf() presents a flat rule as a
+   one-condition group, and upgrade() rewrites it for real the first time
+   somebody edits it. Reading never mutates; editing does. */
+const isGroup = n => !!n && Array.isArray(n.conds);
+const matchOf = n => (n && n.match === 'any') ? 'any' : 'all';
+
+function condsOf(r){
+  if(Array.isArray(r.conds)) return r.conds;
+  // a view of the old shape — a fresh array, so callers must upgrade to write
+  return [{id: r.id + '-c', when: r.when, op: r.op, value: r.value}];
+}
+function upgrade(r){
+  if(!Array.isArray(r.conds)){
+    r.conds = condsOf(r);
+    r.match = matchOf(r);
+    delete r.when; delete r.op; delete r.value;
+  }
+  return r;
+}
+function walkConds(nodes, fn){
+  (nodes||[]).forEach(n => { fn(n); if(isGroup(n)) walkConds(n.conds, fn); });
+}
+function nodeById(r, id){
+  let hit = null;
+  walkConds(condsOf(r), n => { if(n.id === id) hit = n; });
+  return hit;
+}
+/* A group whose last condition was deleted still evaluates: empty under 'any'
+   it is merely false, but under 'all' it would quietly falsify the whole rule.
+   So an empty group never survives an edit. */
+function pruneEmpty(r){
+  const rec = arr => {
+    for(let i = arr.length - 1; i >= 0; i--){
+      const n = arr[i];
+      if(isGroup(n)){ rec(n.conds); if(!n.conds.length) arr.splice(i, 1); }
+    }
+  };
+  rec(r.conds);
+  return r.conds.length > 0;
+}
+function dropNode(r, id){
+  const rec = arr => {
+    const i = (arr||[]).findIndex(n => n.id === id);
+    if(i >= 0){ arr.splice(i, 1); return true; }
+    return (arr||[]).some(n => isGroup(n) && rec(n.conds));
+  };
+  return rec(r.conds);
+}
+/* every question a rule looks at, however deep — jumping and deleting both
+   need to know, and neither can read r.when any more */
+function whensOf(r){
+  const out = [];
+  walkConds(condsOf(r), n => { if(!isGroup(n)) out.push(String(n.when || '')); });
+  return out;
+}
+function dropWhen(r, blockId){
+  upgrade(r);
+  const rec = arr => {
+    for(let i = arr.length - 1; i >= 0; i--){
+      const n = arr[i];
+      if(isGroup(n)){ rec(n.conds); if(!n.conds.length) arr.splice(i, 1); }
+      else if(n.when === blockId) arr.splice(i, 1);
+    }
+  };
+  rec(r.conds);
+  return r.conds.length > 0;          // false means the rule has nothing left
+}
 function fields(f){ return f.hidden || (f.hidden = []); }
 const HIDDEN_PREFIX = 'hidden:';
 function whenOf(r, f, answers){
@@ -481,28 +559,41 @@ function whenOf(r, f, answers){
   const b = f.blocks.find(x=>x.id===r.when);
   return b ? {kind:opKind(b.type), v:answers[b.id], b} : null;
 }
-function truthy(r, f, answers){
-  const w = whenOf(r, f, answers); if(!w) return false;
+function condTrue(c, f, answers){
+  const w = whenOf(c, f, answers); if(!w) return false;
   const v = w.v;
   const has = !(v===undefined || v===null || v==='' || (Array.isArray(v) && !v.length));
-  if(r.op==='empty') return !has;
-  if(r.op==='not_empty') return has;
+  if(c.op==='empty') return !has;
+  if(c.op==='not_empty') return has;
   if(!has) return false;
   const kind = w.kind;
   if(kind==='pick'){
-    const hit = Array.isArray(v) ? v.includes(r.value) : v===r.value;
-    return r.op==='is_not' ? !hit : hit;
+    // both sides may be lists now: checkboxes answer with several, and the
+    // condition may name several. 'is' means any overlap, 'is not' means none.
+    const want = Array.isArray(c.value) ? c.value : [c.value];
+    const got  = Array.isArray(v) ? v : [v];
+    const hit = want.some(x => got.includes(x));
+    return c.op==='is_not' ? !hit : hit;
   }
   if(kind==='num'){
-    const n = Number(v), m = Number(r.value);
+    const n = Number(v), m = Number(c.value);
     if(Number.isNaN(m)) return false;
-    if(r.op==='gt') return n > m;
-    if(r.op==='lt') return n < m;
-    return r.op==='is_not' ? n !== m : n === m;
+    if(c.op==='gt') return n > m;
+    if(c.op==='lt') return n < m;
+    return c.op==='is_not' ? n !== m : n === m;
   }
-  const s = String(v).toLowerCase(), q = String(r.value==null?'':r.value).toLowerCase();
-  if(r.op==='contains') return s.includes(q);
-  return r.op==='is_not' ? s !== q : s === q;
+  const s = String(v).toLowerCase(), q = String(c.value==null?'':c.value).toLowerCase();
+  if(c.op==='contains') return s.includes(q);
+  return c.op==='is_not' ? s !== q : s === q;
+}
+function groupTrue(nodes, match, f, answers){
+  const kids = nodes || [];
+  if(!kids.length) return false;          // an empty group fires nothing
+  const one = n => isGroup(n) ? groupTrue(n.conds, matchOf(n), f, answers) : condTrue(n, f, answers);
+  return match === 'any' ? kids.some(one) : kids.every(one);
+}
+function truthy(r, f, answers){
+  return groupTrue(condsOf(r), matchOf(r), f, answers);
 }
 function visible(b, f, answers){
   const rs = rules(f).filter(r=>r.target===b.id && (r.do==='show' || r.do==='hide'));
@@ -514,7 +605,7 @@ function visible(b, f, answers){
 function jumpFrom(pageBlocks, f, answers){
   const ids = new Set(pageBlocks.map(b=>b.id));
   return rules(f).find(r=>(r.do==='jump'||r.do==='submit')
-    && (ids.has(r.when) || String(r.when).startsWith(HIDDEN_PREFIX))
+    && whensOf(r).some(w => ids.has(w) || w.startsWith(HIDDEN_PREFIX))
     && truthy(r,f,answers)) || null;
 }
 
@@ -706,6 +797,7 @@ function render(){
     state.view==='responses' ? renderResponses() : '';
   layer.querySelectorAll('.panel,.scrim').forEach(n=>n.remove());
   if(state.panel) renderPanel();
+  const directed = !!state.focus;      // read it before afterBuild() clears it
   if(state.view==='build') afterBuild();
   restoreFocus(directed ? null : snap);
 }
@@ -795,7 +887,9 @@ function renderBuild(){
           placeholder="${isInput(b.type)?'Ask a question…':(b.type==='text'?"Write text, or press '/' for a block":'Heading')}">${esc(b.label)}</textarea>${req}</div>`;
       shell = blockShell(b, i, label + (isInput(b.type)?`<div class="field">${fieldPreview(b)}</div>`:''));
     }
-    return shell + rules(f).filter(r=>r.when===b.id).map(r=>ruleCard(r,f)).join('');
+    // a rule hangs under the first question it looks at; a grouped rule has no
+    // r.when of its own, so ask the tree
+    return shell + rules(f).filter(r=>whensOf(r)[0]===b.id).map(r=>ruleCard(r,f)).join('');
   }).join('');
   return `<div class="canvasform" data-bg="${f.theme.bg}" data-align="${f.theme.align}" style="${themeVars(f)}">
     <div class="col">
@@ -831,32 +925,87 @@ function shortLabel(b){
   const s = (b.label||'').trim() || TYPES[b.type].n;
   return s.length>30 ? s.slice(0,29)+'…' : s;
 }
+function condRow(c, r, f){
+  const isHid = String(c.when||'').startsWith(HIDDEN_PREFIX);
+  const wb = isHid ? null : f.blocks.find(x=>x.id===c.when);
+  const kind = isHid ? 'text' : (wb ? opKind(wb.type) : 'text');
+  const sel = (k, opts, extra='') => `<select data-node="${c.id}" data-rule="${r.id}" data-k="${k}"${extra}>${opts}</select>`;
+  const needsValue = c.op!=='empty' && c.op!=='not_empty';
+
+  let val = '';
+  if(needsValue && kind==='pick' && wb){
+    /* chips plus a short "add" list, rather than a multiple <select>: a
+       multi-select inline is a scrolling box that hides what is chosen, and
+       what matters here is seeing the set at a glance. */
+    const chosen = Array.isArray(c.value) ? c.value : (c.value==null||c.value==='' ? [] : [c.value]);
+    const opts = wb.options || [];
+    const chips = chosen.map(id=>{
+      const o = opts.find(x=>x.id===id);
+      return `<span class="chip">${esc(o ? (o.text||'Untitled option') : 'Removed option')}<button data-act="cond-unpick" data-rule="${r.id}" data-node="${c.id}" data-v="${esc(id)}" title="Remove">×</button></span>`;
+    }).join('');
+    const left = opts.filter(o=>!chosen.includes(o.id));
+    const add = left.length
+      ? sel('add', `<option value="">${chosen.length?'or…':'Choose…'}</option>`
+          + left.map(o=>`<option value="${o.id}">${esc(o.text||'Untitled option')}</option>`).join(''), ' class="addopt-sel"')
+      : '';
+    val = `<span class="chips-in">${chips}${add}</span>`;
+  } else if(needsValue){
+    val = `<input data-node="${c.id}" data-rule="${r.id}" data-k="value" value="${esc(c.value==null?'':c.value)}" placeholder="${kind==='num'?'0':'value'}" style="width:108px">`;
+  }
+
+  const when = sel('when',
+    `<optgroup label="Questions">${f.blocks.filter(x=>isInput(x.type)).map(q=>`<option value="${q.id}"${q.id===c.when?' selected':''}>${esc(shortLabel(q))}</option>`).join('')}</optgroup>`
+    + (fields(f).length?`<optgroup label="Hidden fields">${fields(f).map(h=>`<option value="${HIDDEN_PREFIX}${esc(h.name)}"${c.when===HIDDEN_PREFIX+h.name?' selected':''}>@${esc(h.name)}</option>`).join('')}</optgroup>`:''));
+  const op = sel('op', OPS[kind].map(([v,n])=>`<option value="${v}"${c.op===v?' selected':''}>${n}</option>`).join(''));
+  return `<div class="cond">${when}${op}${val}
+    <button class="rm" data-act="del-node" data-rule="${r.id}" data-node="${c.id}" title="Remove this condition">×</button></div>`;
+}
+
+/* A group draws its children with the joiner down the left: the first row has
+   none, the second carries the only editable all/any for the group, and the
+   rest repeat it as plain text — one group, one joiner, stated once. */
+function groupBody(g, r, f, depth){
+  const kids = g.conds || [];
+  const joiner = matchOf(g);
+  const rows = kids.map((n, i) => {
+    const lead = i === 0
+      ? `<span class="lg join">When</span>`
+      : i === 1
+        ? `<select class="join" data-node="${g.id}" data-rule="${r.id}" data-k="match">
+             <option value="all"${joiner==='all'?' selected':''}>and</option>
+             <option value="any"${joiner==='any'?' selected':''}>or</option>
+           </select>`
+        : `<span class="lg join">${joiner==='any'?'or':'and'}</span>`;
+    const body = isGroup(n)
+      ? `<div class="cgroup">${groupBody(n, r, f, depth+1)}
+           <button class="rm nested-rm" data-act="del-node" data-rule="${r.id}" data-node="${n.id}" title="Remove this group">×</button></div>`
+      : condRow(n, r, f);
+    return `<div class="crow">${lead}${body}</div>`;
+  }).join('');
+  const add = `<div class="crow"><span class="join"></span><span class="cadd">
+      <button data-act="add-cond" data-rule="${r.id}" data-node="${g.id}">+ Condition</button>
+      ${depth < 2 ? `<button data-act="add-group" data-rule="${r.id}" data-node="${g.id}">+ Group</button>` : ''}
+    </span></div>`;
+  return rows + add;
+}
+
 function ruleCard(r, f){
-  const isHid = String(r.when||'').startsWith(HIDDEN_PREFIX);
-  const wb = isHid ? null : f.blocks.find(x=>x.id===r.when);
-  if(!isHid && !wb) return '';
-  const kind = isHid ? 'text' : opKind(wb.type);
-  const needsValue = r.op!=='empty' && r.op!=='not_empty';
+  const conds = condsOf(r);
+  if(!conds.length) return '';
   const sel = (k, opts) => `<select data-rule="${r.id}" data-k="${k}">${opts}</select>`;
-  const val = !needsValue ? '' : (kind==='pick'
-    ? sel('value', (wb.options||[]).map(o=>`<option value="${o.id}"${r.value===o.id?' selected':''}>${esc(o.text||'Untitled option')}</option>`).join(''))
-    : `<input data-rule="${r.id}" data-k="value" value="${esc(r.value==null?'':r.value)}" placeholder="${kind==='num'?'0':'value'}" style="width:108px">`);
   const pages = pagesOf(f);
+  const firstWhen = whensOf(r)[0] || '';
   const target = r.do==='jump'
     ? sel('page', pages.map((p,i)=>`<option value="${i}"${Number(r.page)===i?' selected':''}>Page ${i+1}</option>`).join(''))
     : (r.do==='show'||r.do==='hide')
-      ? sel('target', f.blocks.filter(x=>x.type!=='page'&&x.id!==r.when).map(x=>`<option value="${x.id}"${r.target===x.id?' selected':''}>${esc(shortLabel(x))}</option>`).join(''))
+      ? sel('target', f.blocks.filter(x=>x.type!=='page'&&x.id!==firstWhen).map(x=>`<option value="${x.id}"${r.target===x.id?' selected':''}>${esc(shortLabel(x))}</option>`).join(''))
       : '';
   return `<div class="logic">
-    <span class="lg">When</span>
-    ${sel('when', `<optgroup label="Questions">${f.blocks.filter(x=>isInput(x.type)).map(q=>`<option value="${q.id}"${q.id===r.when?' selected':''}>${esc(shortLabel(q))}</option>`).join('')}</optgroup>`
-      + (fields(f).length?`<optgroup label="Hidden fields">${fields(f).map(h=>`<option value="${HIDDEN_PREFIX}${esc(h.name)}"${r.when===HIDDEN_PREFIX+h.name?' selected':''}>@${esc(h.name)}</option>`).join('')}</optgroup>`:''))}
-    ${sel('op', OPS[kind].map(([v,n])=>`<option value="${v}"${r.op===v?' selected':''}>${n}</option>`).join(''))}
-    ${val}
-    <span class="lg">Then</span>
-  const directed = !!state.focus;      // read it before afterBuild() clears it
-    ${sel('do', DOS.map(([v,n])=>`<option value="${v}"${r.do===v?' selected':''}>${n}</option>`).join(''))}
-    ${target}
+    ${groupBody({id:r.id+'-root', match:matchOf(r), conds}, r, f, 0)}
+    <div class="crow then"><span class="lg join">Then</span><span class="cadd">
+      ${sel('do', DOS.map(([v,n])=>`<option value="${v}"${r.do===v?' selected':''}>${n}</option>`).join(''))}
+      ${target}
+    </span></div>
     <button class="rm" data-act="del-logic" data-id="${r.id}" title="Remove rule">×</button>
   </div>`;
 }
@@ -1323,20 +1472,53 @@ document.addEventListener('click', e=>{
     case 'req': { const b = f.blocks.find(x=>x.id===a.dataset.id); b.required = !b.required; dirty(); render(); break; }
     case 'del-block': { const id = a.dataset.id;
       f.blocks = f.blocks.filter(x=>x.id!==id);
-      f.logic = rules(f).filter(r=>r.when!==id && r.target!==id);
+      f.logic = rules(f).filter(r => r.target!==id && dropWhen(r, id));
       if(!f.blocks.length) f.blocks=[block('short_text','')]; state.sel=null; dirty(); render(); break; }
     case 'add-logic': {
       const b = f.blocks.find(x=>x.id===a.dataset.id);
       const kind = opKind(b.type);
       const after = f.blocks.slice(f.blocks.indexOf(b)+1).find(x=>x.type!=='page')
                  || f.blocks.find(x=>x.type!=='page' && x.id!==b.id);
-      const r = {id:uid('r'), when:b.id, op:'is', value: kind==='pick' ? ((b.options||[])[0]||{}).id : '',
+      const r = {id:uid('r'), match:'all',
+                 conds:[{id:uid('c'), when:b.id, op:'is',
+                         value: kind==='pick' ? [((b.options||[])[0]||{}).id].filter(Boolean) : ''}],
                  do:'show', target: after ? after.id : ''};
       const np = pagesOf(f).length, pi = pageOfBlock(f, b.id);
       if(np>1 && pi<np-1){ r.do='jump'; r.page=Math.min(pi+1, np-1); r.target=undefined; }
       rules(f).push(r); state.sel = b.id; dirty(); render(); break;
     }
     case 'del-logic': { f.logic = rules(f).filter(r=>r.id!==a.dataset.id); dirty(); render(); break; }
+    case 'add-cond': case 'add-group': {
+      const r = rules(f).find(x=>x.id===a.dataset.rule); if(!r) break;
+      upgrade(r);
+      const root = {id:r.id+'-root', conds:r.conds};
+      const g = a.dataset.node === root.id ? root : nodeById(r, a.dataset.node);
+      if(!g) break;
+      const first = f.blocks.find(x=>isInput(x.type));
+      const fresh = () => ({id:uid('c'), when: first?first.id:'', op:'is',
+                            value: first && opKind(first.type)==='pick' ? [((first.options||[])[0]||{}).id].filter(Boolean) : ''});
+      g.conds.push(a.dataset.act==='add-group'
+        ? {id:uid('g'), match:'any', conds:[fresh()]}
+        : fresh());
+      if(g === root) r.conds = root.conds;
+      dirty(); render(); break;
+    }
+    case 'del-node': {
+      const r = rules(f).find(x=>x.id===a.dataset.rule); if(!r) break;
+      upgrade(r);
+      dropNode(r, a.dataset.node);
+      // a rule with nothing left to test is not a rule
+      if(!pruneEmpty(r)) f.logic = rules(f).filter(x=>x.id!==r.id);
+      dirty(); render(); break;
+    }
+    case 'cond-unpick': {
+      const r = rules(f).find(x=>x.id===a.dataset.rule); if(!r) break;
+      upgrade(r);
+      const c = nodeById(r, a.dataset.node); if(!c) break;
+      const was = Array.isArray(c.value) ? c.value : [c.value];
+      c.value = was.filter(v => v !== a.dataset.v);
+      dirty(); render(); break;
+    }
     case 'add-field': {
       const el = document.getElementById('newfield');
       const name = fieldName(el ? el.value : '');
@@ -1445,7 +1627,11 @@ document.addEventListener('input', e=>{
   }
   if(t.dataset.rule && t.dataset.k==='value' && f){
     const r = rules(f).find(x=>x.id===t.dataset.rule);
-    if(r){ r.value = t.value; store.saveForm(f); state.dirtyUntil = Date.now()+4000; }
+    if(r){
+      upgrade(r);
+      const c = nodeById(r, t.dataset.node);
+      if(c){ c.value = t.value; store.saveForm(f, 'cond:'+t.dataset.node); state.dirtyUntil = Date.now()+4000; }
+    }
     return;
   }
   if(t.classList.contains('q') && state.menu){ state.menu.q = t.value; state.menu.idx = 0; drawMenu(); return; }
@@ -1487,15 +1673,32 @@ document.addEventListener('change', e=>{
   if(t.dataset.rule && f){
     const r = rules(f).find(x=>x.id===t.dataset.rule); if(!r) return;
     const k = t.dataset.k;
-    if(k==='when'){
-      r.when = t.value;
-      const nb = f.blocks.find(x=>x.id===r.when);
-      r.op = 'is'; r.value = nb && opKind(nb.type)==='pick' ? ((nb.options||[])[0]||{}).id : '';
+    const node = t.dataset.node;
+    if(node){
+      upgrade(r);
+      if(k==='match'){
+        // the root group's joiner lives on the rule itself
+        if(node === r.id+'-root') r.match = t.value;
+        else { const g = nodeById(r, node); if(g) g.match = t.value; }
+      } else {
+        const c = nodeById(r, node); if(!c) return;
+        if(k==='when'){
+          c.when = t.value;
+          const nb = f.blocks.find(x=>x.id===c.when);
+          c.op = 'is';
+          c.value = nb && opKind(nb.type)==='pick' ? [((nb.options||[])[0]||{}).id].filter(Boolean) : '';
+        } else if(k==='add'){
+          if(!t.value) return;
+          const was = Array.isArray(c.value) ? c.value : (c.value==null||c.value==='' ? [] : [c.value]);
+          if(!was.includes(t.value)) c.value = was.concat(t.value);
+        } else c[k] = t.value;
+      }
     } else if(k==='do'){
       r.do = t.value;
-      if(r.do==='jump') r.page = Math.min(pageOfBlock(f, r.when)+1, pagesOf(f).length-1);
+      const firstWhen = whensOf(r)[0] || '';
+      if(r.do==='jump') r.page = Math.min(pageOfBlock(f, firstWhen)+1, pagesOf(f).length-1);
       else if(r.do==='show'||r.do==='hide'){
-        if(!r.target){ const after = f.blocks.find(x=>x.type!=='page' && x.id!==r.when); r.target = after?after.id:''; }
+        if(!r.target){ const after = f.blocks.find(x=>x.type!=='page' && x.id!==firstWhen); r.target = after?after.id:''; }
       }
     } else if(k==='page') r.page = Number(t.value);
     else r[k] = t.value;
@@ -1511,6 +1714,20 @@ document.addEventListener('change', e=>{
 /* keyboard: the editor's spine */
 document.addEventListener('keydown', e=>{
   const f = form();
+  /* Undo comes before everything else, including the slash menu: if a stray
+     block got inserted, the menu is exactly the state you want out of. It
+     takes over the browser's own undo inside a field, which is the point —
+     a caret-level undo and a document-level one fighting each other is worse
+     than either. */
+  if((e.ctrlKey || e.metaKey) && /^[zyZY]$/.test(e.key)){
+    if(state.view !== 'build' || !canEdit(f)) return;
+    e.preventDefault();
+    closeMenu();
+    const redo = e.key === 'y' || e.key === 'Y' || e.shiftKey;
+    const moved = redo ? undoStack.redo() : undoStack.undo();
+    if(!moved) toast(redo ? 'Nothing to redo' : 'Nothing to undo');
+    return;
+  }
   if(e.target.id==='newfield' && e.key==='Enter'){
     e.preventDefault();
     const btn = document.querySelector('[data-act="add-field"]');
@@ -1532,6 +1749,19 @@ document.addEventListener('keydown', e=>{
   }
   if(state.view==='build' && f){
     const t = e.target;
+    if(t.classList && t.classList.contains('ftitle') && e.key==='Enter' && !e.shiftKey){
+      e.preventDefault();
+      const first = f.blocks[0];
+      // an untouched first block is somewhere to go, not something to push down
+      if(first && !first.label){
+        state.sel = first.id; state.focus = {id:first.id, field:'label'};
+      } else {
+        const nb = block('text','');
+        f.blocks.unshift(nb); state.sel = nb.id; state.focus = {id:nb.id, field:'label'};
+        store.saveForm(f); state.dirtyUntil = Date.now()+4000;
+      }
+      render(); return;
+    }
     if(t.dataset && t.dataset.field==='label'){
       const b = f.blocks.find(x=>x.id===t.dataset.block); const i = f.blocks.indexOf(b);
       if(e.key==='Enter' && !e.shiftKey){
@@ -1696,30 +1926,3 @@ store.boot = async function(){
   if(fromHash()) render();
 };
 if(bar && stage) store.boot();
-    if(t.classList && t.classList.contains('ftitle') && e.key==='Enter' && !e.shiftKey){
-      e.preventDefault();
-      const first = f.blocks[0];
-      // an untouched first block is somewhere to go, not something to push down
-      if(first && !first.label){
-        state.sel = first.id; state.focus = {id:first.id, field:'label'};
-      } else {
-        const nb = block('text','');
-        f.blocks.unshift(nb); state.sel = nb.id; state.focus = {id:nb.id, field:'label'};
-        store.saveForm(f); state.dirtyUntil = Date.now()+4000;
-      }
-      render(); return;
-    }
-  /* Undo comes before everything else, including the slash menu: if a stray
-     block got inserted, the menu is exactly the state you want out of. It
-     takes over the browser's own undo inside a field, which is the point —
-     a caret-level undo and a document-level one fighting each other is worse
-     than either. */
-  if((e.ctrlKey || e.metaKey) && /^[zyZY]$/.test(e.key)){
-    if(state.view !== 'build' || !canEdit(f)) return;
-    e.preventDefault();
-    closeMenu();
-    const redo = e.key === 'y' || e.key === 'Y' || e.shiftKey;
-    const moved = redo ? undoStack.redo() : undoStack.undo();
-    if(!moved) toast(redo ? 'Nothing to redo' : 'Nothing to undo');
-    return;
-  }

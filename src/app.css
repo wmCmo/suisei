@@ -117,7 +117,7 @@ svg{display:block}
 .fi::placeholder{color:var(--f-muted);opacity:.72}
 .fi:focus{outline:none;border-color:var(--f-accent-text);box-shadow:0 0 0 3px var(--f-wash)}
 textarea.fi{resize:vertical;min-height:76px;line-height:1.5}
-select.fi{height:40px;padding-right:var(--sp-2)}
+select.fi{height:40px;background-color:var(--f-bg)}
 .opts{display:flex;flex-direction:column;gap:var(--sp-1)}
 .opt{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3);border:1px solid var(--f-line);border-radius:var(--f-r);background:var(--f-bg);min-width:0}
 .opt .mk{flex:none;width:17px;height:17px;border:1.5px solid var(--f-line);border-radius:50%;display:grid;place-items:center}
@@ -143,12 +143,50 @@ select.fi{height:40px;padding-right:var(--sp-2)}
 .scale-ends input:focus{outline:none}
 .drop{border:1.5px dashed var(--f-line);border-radius:var(--f-r);padding:var(--sp-4);text-align:center;color:var(--f-muted);font-size:var(--fs-label);line-height:var(--lh-label)}
 .rule{height:1px;background:var(--f-line);margin:var(--sp-3) 0}
-.logic{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);margin:var(--sp-3) 0 var(--sp-1);padding:var(--sp-3) var(--sp-4);border:1px solid var(--f-line);border-radius:var(--f-r);background:var(--f-soft)}
+.logic{position:relative;display:flex;flex-direction:column;gap:var(--sp-2);margin:var(--sp-3) 0 var(--sp-1);padding:var(--sp-4);padding-right:var(--sp-6);border:1px solid var(--f-line);border-radius:var(--f-r);background:var(--f-soft)}
+/* Every row is the same two columns at every depth: the joiner, then the
+   condition. A nested group used to be a bordered box with padding of its
+   own, so each level cost the joiner twice over and opened with an empty
+   cell. It is a rail now — the indent is the rail, the alignment is the
+   column, and the two stop fighting. */
+.crow{display:flex;align-items:center;gap:var(--sp-2);min-width:0}
+.crow:has(>.cgroup){align-items:flex-start}
+.crow>.join{flex:none;width:var(--logic-join);text-align:right}
+.crow:has(>.cgroup)>.join{margin-top:var(--sp-2)}
+.crow>select.join{width:var(--logic-join);text-align:left;padding-left:var(--sp-1)}
+.cond{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);flex:1;min-width:0}
+.cgroup{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;gap:var(--sp-2);
+  padding:var(--sp-2) var(--sp-6) var(--sp-2) var(--sp-3);
+  border-left:2px solid var(--f-line);border-radius:0 var(--r-sm) var(--r-sm) 0;background:var(--f-bg)}
+.cadd{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
+.cadd>button[data-act^="add-"]{font-size:var(--fs-micro);line-height:var(--lh-micro);color:var(--f-muted);padding:var(--sp-1) var(--sp-2);border-radius:var(--r-sm)}
+.cadd>button[data-act^="add-"]:hover{color:var(--f-accent-text)}
+.chips-in{display:flex;align-items:center;gap:var(--sp-1);flex-wrap:wrap;min-width:0}
+.chip{display:inline-flex;align-items:center;gap:var(--sp-1);background:var(--f-bg);color:var(--f-fg);
+  border:1px solid var(--f-line);border-radius:var(--r-sm);padding:0 var(--sp-2);height:30px;
+  font-size:var(--fs-label);line-height:var(--lh-label)}
+.chip button{color:var(--f-muted);line-height:1}
+.chip button:hover{color:var(--f-fg)}
+/* both removes live in one right-hand column instead of stepping diagonally */
+
+.logic .then{margin-top:var(--sp-1)}
 .logic .lg{font-weight:500;font-size:var(--fs-micro);line-height:var(--lh-micro);text-transform:uppercase;letter-spacing:.08em;color:var(--f-muted)}
 .logic select,.logic input{height:30px;background:var(--f-bg);border:1px solid var(--f-line);border-radius:var(--r-sm);padding:0 var(--sp-2);font-size:var(--fs-label);line-height:var(--lh-label);font-family:inherit;max-width:168px;min-width:0;color:inherit}
+/* our caret, placed against our own padding instead of the platform's */
+.logic select,select.fi{appearance:none;-webkit-appearance:none;
+  background-image:var(--f-caret);background-repeat:no-repeat;background-position:right var(--sp-2) center;
+  padding-right:var(--sp-5)}
+.crow>select.join{padding-right:var(--sp-4)}
+/* a taller control wants the caret a little further in */
+select.fi{background-position:right var(--sp-3) center;padding-right:var(--sp-6)}
 .logic select:focus,.logic input:focus{outline:none;border-color:var(--f-accent)}
-.logic .rm{margin-left:auto;color:var(--f-muted);padding:0 var(--sp-1)}
+.logic .rm{color:var(--f-muted);padding:0 var(--sp-1)}
 .logic .rm:hover{color:var(--danger)}
+.logic>.rm{position:absolute;top:var(--sp-2);right:var(--sp-2)}
+.cond>.rm{flex:none;margin-left:auto}
+/* a group's remove deletes more than a condition's does, so it sits a step
+   quieter until you reach for it */
+.cgroup>.nested-rm{position:absolute;top:var(--sp-2);right:var(--sp-1);margin:0;flex:none;color:var(--f-faint)}
 .hfrow{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);margin-top:var(--sp-4);padding-top:var(--sp-3);border-top:1px solid var(--f-line)}
 .hfrow code{font-family:var(--mono);font-size:var(--fs-micro);line-height:var(--lh-micro);background:var(--f-soft);padding:var(--sp-1) var(--sp-2);border-radius:var(--r-sm);color:var(--f-muted)}
 .hfrow button{font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--f-muted)}
