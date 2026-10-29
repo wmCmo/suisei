@@ -257,3 +257,14 @@ states.html          built; the component mirror
 
 `index.html` and `states.html` are build output and are committed, so the repo
 can be served as-is with nothing installed.
+
+## License
+
+MIT — see [LICENSE](LICENSE). Use it, change it, ship it; keep the copyright
+notice.
+
+Two things in here are other people's and keep their own terms. The icons are
+[Fluent Emoji](https://github.com/microsoft/fluentui-emoji) by Microsoft, MIT
+licensed, loaded from their repository rather than copied into this one. The
+typefaces are Zen Kaku Gothic New and Zen Old Mincho, served by Google Fonts
+under the SIL Open Font License.
