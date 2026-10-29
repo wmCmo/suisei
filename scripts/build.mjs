@@ -26,8 +26,8 @@ const errors = [];
 const warnings = [];
 // a colour written out in app.css is a decision in the wrong file
 const COLOUR = /#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(/;
-// spacing and corner values belong to the scale
-const SPACING = /\b(?:padding|margin|gap|row-gap|column-gap|border-radius)\s*:\s*([^;}]+)/g;
+// spacing and corner values belong to the scale, longhands included
+const SPACING = /(?<![\w-])(?:padding|margin|gap|row-gap|column-gap|border-radius)(?:-(?:top|right|bottom|left|block|inline|start|end))?\s*:\s*([^;}]+)/g;
 const RAW_PX = /(?<![\w-])(\d+(?:\.\d+)?)px/;
 
 lines.forEach((line, i) => {
@@ -37,7 +37,7 @@ lines.forEach((line, i) => {
     const px = m[1].match(RAW_PX);
     // 0 and hairline-scale values are structure, not spacing decisions
     if (px && Number(px[1]) > 2) {
-      warnings.push(`${at}  raw ${m[0].split(':')[0].trim()} — ${m[0].trim().slice(0, 60)}`);
+      errors.push(`${at}  raw ${m[0].split(':')[0].trim()} — use a step from the spacing scale`);
     }
   }
   const fs = line.match(/font-size\s*:\s*(\d+(?:\.\d+)?)px/);

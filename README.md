@@ -115,15 +115,22 @@ That split is enforced, not just intended. The build refuses to ship a colour
 literal found outside `tokens.css`:
 
 ```bash
-node scripts/build.mjs             # builds, errors on literals
-node scripts/build.mjs --warnings  # also lists values that should come from a scale
-node scripts/build.mjs --strict    # fails on those too
+node scripts/build.mjs   # builds, and fails on anything written by hand
 ```
 
-Colour is clean. Spacing and type are not yet: the build currently reports
-around 160 values still written by hand, which is the honest measure of how much
-of the design system the code actually follows. There is no type scale at all
-yet — that is the next gap to close.
+All three scales are enforced. A colour literal, a raw `font-size`, or a padding,
+gap or radius in loose pixels fails the build, so `app.css` cannot drift back to
+values chosen one rule at a time. Values of 2px and under are left alone: a
+hairline is structure, not a spacing decision.
+
+The scales themselves:
+
+```
+colour    20 tokens, Daylight and Nightside
+type      9 steps, each carrying its line-height
+spacing   4 8 12 16 24 32 48 64
+radius    6 / 9 / 14 / pill
+```
 
 `states.html` renders every block type, in both sheets, in the builder and in
 the form, using the app's own render functions rather than copied markup. One
