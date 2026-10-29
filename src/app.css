@@ -76,7 +76,9 @@ svg{display:block}
 .empty strong{display:block;color:var(--fg);font-size:var(--fs-ask);line-height:var(--lh-ask);margin-bottom:var(--sp-1)}
 
 /* ---------- form canvas (shared by builder + fill) ---------- */
-.canvasform{background:var(--f-bg);color:var(--f-fg);font-family:var(--f-font)}
+/* position: the drop line is a child of the form, so that it inherits the
+   form's own accent — on the body it had none and drew in nothing */
+.canvasform{position:relative;background:var(--f-bg);color:var(--f-fg);font-family:var(--f-font)}
 .canvasform[data-align="center"] .col{text-align:center}
 .canvasform[data-align="center"] .opt{justify-content:center}
 .col{max-width:680px;margin:0 auto;padding-left:max(var(--sp-4),env(safe-area-inset-left,0px));padding-right:max(var(--sp-4),env(safe-area-inset-right,0px));padding-block:var(--sp-7) var(--sp-8)}
@@ -91,8 +93,12 @@ svg{display:block}
    hard black rule at this weight. The spread bleeds it past the text column
    without moving anything. */
 .blk.sel{background:var(--f-wash);box-shadow:0 0 0 7px var(--f-wash)}
-.blk.drop-before::before,.blk.drop-after::after{content:"";position:absolute;left:0;right:0;height:2px;background:var(--f-accent);border-radius:2px}
-.blk.drop-before::before{top:-1px}.blk.drop-after::after{bottom:-1px}
+/* the grip owns the gesture: touch-action stops the page scrolling under a
+   finger that is dragging a block */
+.grip{touch-action:none;cursor:grab}
+.grip:active{cursor:grabbing}
+.blk.dragging{background:var(--f-wash)}
+.dropline{position:absolute;z-index:40;height:2px;background:var(--f-accent);border-radius:2px;pointer-events:none}
 .blk .gutter{position:absolute;left:-54px;top:7px;display:flex;gap:2px;opacity:0;transition:opacity .12s}
 .blk:hover .gutter,.blk.sel .gutter{opacity:1}
 .gutter button{width:22px;height:22px;display:grid;place-items:center;border-radius:var(--r-sm);color:var(--f-muted)}

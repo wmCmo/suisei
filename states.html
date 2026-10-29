@@ -205,7 +205,9 @@ svg{display:block}
 .empty strong{display:block;color:var(--fg);font-size:var(--fs-ask);line-height:var(--lh-ask);margin-bottom:var(--sp-1)}
 
 /* ---------- form canvas (shared by builder + fill) ---------- */
-.canvasform{background:var(--f-bg);color:var(--f-fg);font-family:var(--f-font)}
+/* position: the drop line is a child of the form, so that it inherits the
+   form's own accent — on the body it had none and drew in nothing */
+.canvasform{position:relative;background:var(--f-bg);color:var(--f-fg);font-family:var(--f-font)}
 .canvasform[data-align="center"] .col{text-align:center}
 .canvasform[data-align="center"] .opt{justify-content:center}
 .col{max-width:680px;margin:0 auto;padding-left:max(var(--sp-4),env(safe-area-inset-left,0px));padding-right:max(var(--sp-4),env(safe-area-inset-right,0px));padding-block:var(--sp-7) var(--sp-8)}
@@ -220,8 +222,12 @@ svg{display:block}
    hard black rule at this weight. The spread bleeds it past the text column
    without moving anything. */
 .blk.sel{background:var(--f-wash);box-shadow:0 0 0 7px var(--f-wash)}
-.blk.drop-before::before,.blk.drop-after::after{content:"";position:absolute;left:0;right:0;height:2px;background:var(--f-accent);border-radius:2px}
-.blk.drop-before::before{top:-1px}.blk.drop-after::after{bottom:-1px}
+/* the grip owns the gesture: touch-action stops the page scrolling under a
+   finger that is dragging a block */
+.grip{touch-action:none;cursor:grab}
+.grip:active{cursor:grabbing}
+.blk.dragging{background:var(--f-wash)}
+.dropline{position:absolute;z-index:40;height:2px;background:var(--f-accent);border-radius:2px;pointer-events:none}
 .blk .gutter{position:absolute;left:-54px;top:7px;display:flex;gap:2px;opacity:0;transition:opacity .12s}
 .blk:hover .gutter,.blk.sel .gutter{opacity:1}
 .gutter button{width:22px;height:22px;display:grid;place-items:center;border-radius:var(--r-sm);color:var(--f-muted)}
@@ -1400,7 +1406,7 @@ function blockShell(b, i, inner){
     ${toolbar}
     <div class="gutter">
       <button data-act="add-block" data-at="${i+1}" title="Insert below">${I.plus}</button>
-      <button class="grip" draggable="true" data-id="${b.id}" title="Drag to move">${I.grip}</button>
+      <button class="grip" data-id="${b.id}" title="Drag to move">${I.grip}</button>
     </div>
     ${inner}
   </div>`;
@@ -2203,6 +2209,7 @@ document.addEventListener('keydown', e=>{
      takes over the browser's own undo inside a field, which is the point —
      a caret-level undo and a document-level one fighting each other is worse
      than either. */
+  if(e.key === 'Escape' && drag.live){ dragStop(false); return; }
   if((e.ctrlKey || e.metaKey) && /^[zyZY]$/.test(e.key)){
     if(state.view !== 'build' || !canEdit(f)) return;
     e.preventDefault();
@@ -2306,38 +2313,117 @@ document.addEventListener('keydown', e=>{
 });
 
 /* drag to reorder */
-let dragId = null;
-document.addEventListener('dragstart', e=>{
-  const g = e.target.closest('.grip'); if(!g) return;
-  dragId = g.dataset.id; e.dataTransfer.effectAllowed='move';
-  try{ e.dataTransfer.setData('text/plain', dragId) }catch(err){}
-});
-document.addEventListener('dragover', e=>{
-  if(!dragId) return;
-  const blk = e.target.closest('.blk'); if(!blk) return;
-  e.preventDefault();
-  document.querySelectorAll('.blk').forEach(n=>n.classList.remove('drop-before','drop-after'));
-  const r = blk.getBoundingClientRect();
-  blk.classList.add(e.clientY < r.top + r.height/2 ? 'drop-before' : 'drop-after');
-});
-document.addEventListener('drop', e=>{
-  if(!dragId) return;
-  const blk = e.target.closest('.blk'); const f = form();
-  document.querySelectorAll('.blk').forEach(n=>n.classList.remove('drop-before','drop-after'));
-  if(blk && f){
-    e.preventDefault();
-    const from = f.blocks.findIndex(b=>b.id===dragId);
-    const r = blk.getBoundingClientRect();
-    let to = f.blocks.findIndex(b=>b.id===blk.dataset.id);
-    if(e.clientY >= r.top + r.height/2) to++;
-    const [moved] = f.blocks.splice(from,1);
-    if(from < to) to--;
-    f.blocks.splice(to, 0, moved);
-    store.saveForm(f); state.dirtyUntil = Date.now()+4000; render();
+/* ---------- drag to reorder ----------
+
+   This used to be the HTML5 drag API, which asked `e.target.closest('.blk')`
+   on every dragover and only called preventDefault when that hit. A browser
+   refuses any drop where preventDefault was not called, so 19% of the column
+   — above the first block, below the last, around "+ Add a block" — silently
+   rejected you. It also never auto-scrolled, and it does not fire from touch
+   at all, so on a phone a block could not be moved.
+
+   Pointer events are one path for mouse, pen and touch. The grip is what
+   makes that safe: a pointer that goes down on it is unambiguously a drag,
+   so there is no long-press and no guessing against a scroll. */
+const DRAG_EDGE = 72, DRAG_MAX = 18, DRAG_SLOP = 3;
+const drag = {id:null, pid:null, grip:null, el:null, rows:null, to:0, line:null, raf:0, y:0, from:0, live:false, canvas:null, cx:0, cy:0};
+
+/* measured once per drag, in document coordinates, so scrolling does not
+   invalidate them */
+function dragRows(){
+  const canvas = document.querySelector('.canvasform');
+  drag.canvas = canvas;
+  const c = canvas ? canvas.getBoundingClientRect() : {top:0, left:0};
+  drag.cx = c.left + window.scrollX;
+  drag.cy = c.top + window.scrollY;
+  return [...document.querySelectorAll('#blocks > .blk')].map(el => {
+    const r = el.getBoundingClientRect();
+    return {id: el.dataset.id, el, top: r.top + window.scrollY, bottom: r.bottom + window.scrollY,
+            left: r.left + window.scrollX, width: r.width};
+  });
+}
+/* the insertion point is however many blocks you are already past — there is
+   nothing to be "over", so there is nothing to miss */
+function dragIndexFor(y){
+  const rows = drag.rows; let i = 0;
+  while(i < rows.length && y > (rows[i].top + rows[i].bottom) / 2) i++;
+  return i;
+}
+function dragLine(){
+  const rows = drag.rows; if(!rows || !rows.length) return;
+  if(!drag.line){
+    drag.line = document.createElement('div');
+    drag.line.className = 'dropline';
+    (drag.canvas || document.body).appendChild(drag.line);
   }
-  dragId = null;
+  const i = Math.min(drag.to, rows.length);
+  const ref = rows[Math.min(i, rows.length - 1)];
+  // document coordinates, less the form's own origin
+  drag.line.style.left = (ref.left - drag.cx) + 'px';
+  drag.line.style.width = ref.width + 'px';
+  drag.line.style.top = ((i < rows.length ? ref.top : ref.bottom) - drag.cy - 1) + 'px';
+}
+function dragScroll(){
+  if(!drag.live) return;
+  const vy = drag.y - window.scrollY;                 // back into viewport space
+  let d = 0;
+  if(vy < DRAG_EDGE) d = -Math.ceil((DRAG_EDGE - vy) / DRAG_EDGE * DRAG_MAX);
+  else if(vy > window.innerHeight - DRAG_EDGE) d = Math.ceil((vy - (window.innerHeight - DRAG_EDGE)) / DRAG_EDGE * DRAG_MAX);
+  if(d){
+    const before = window.scrollY;
+    window.scrollBy(0, d);
+    drag.y += window.scrollY - before;                // the pointer has not moved; the page has
+    drag.to = dragIndexFor(drag.y);
+    dragLine();
+  }
+  drag.raf = requestAnimationFrame(dragScroll);
+}
+function dragStop(commit){
+  if(drag.raf) cancelAnimationFrame(drag.raf);
+  if(drag.line) drag.line.remove();
+  if(drag.el) drag.el.classList.remove('dragging');
+  const f = form();
+  if(commit && drag.live && f){
+    const from = f.blocks.findIndex(b => b.id === drag.id);
+    let to = drag.to;
+    if(from >= 0 && to !== from && to !== from + 1){
+      const [moved] = f.blocks.splice(from, 1);
+      if(from < to) to--;
+      f.blocks.splice(Math.max(0, Math.min(to, f.blocks.length)), 0, moved);
+      store.saveForm(f); state.dirtyUntil = Date.now() + 4000; render();
+    }
+  }
+  Object.assign(drag, {id:null, pid:null, grip:null, el:null, rows:null, to:0, line:null, raf:0, live:false, canvas:null});
+}
+document.addEventListener('pointerdown', e => {
+  const g = e.target.closest('.grip'); if(!g) return;
+  if(e.button) return;                                 // left button or touch only
+  const f = form();
+  if(state.view !== 'build' || !canEdit(f)) return;
+  drag.id = g.dataset.id; drag.pid = e.pointerId; drag.grip = g;
+  drag.from = drag.y = e.clientY + window.scrollY;
+  drag.live = false;
+  try{ g.setPointerCapture(e.pointerId); }catch(err){}
+  e.preventDefault();
 });
-document.addEventListener('dragend', ()=>{ dragId=null; document.querySelectorAll('.blk').forEach(n=>n.classList.remove('drop-before','drop-after')); });
+document.addEventListener('pointermove', e => {
+  if(drag.id === null || e.pointerId !== drag.pid) return;
+  drag.y = e.clientY + window.scrollY;
+  if(!drag.live){
+    if(Math.abs(drag.y - drag.from) < DRAG_SLOP) return;   // a click on the grip is not a drag
+    drag.live = true;
+    drag.rows = dragRows();
+    const row = drag.rows.find(r => r.id === drag.id);
+    drag.el = row ? row.el : null;
+    if(drag.el) drag.el.classList.add('dragging');
+    drag.raf = requestAnimationFrame(dragScroll);
+  }
+  drag.to = dragIndexFor(drag.y);
+  dragLine();
+  e.preventDefault();
+});
+document.addEventListener('pointerup', e => { if(e.pointerId === drag.pid) dragStop(true); });
+document.addEventListener('pointercancel', e => { if(e.pointerId === drag.pid) dragStop(false); });
 
 /* fill: validation + submit */
 function advance(){
