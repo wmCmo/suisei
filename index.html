@@ -32,6 +32,7 @@ img{max-width:100%}
   --serif:'Zen Old Mincho','Hiragino Mincho ProN','Yu Mincho',Georgia,serif;
   --mono:ui-monospace,'Cascadia Mono','SFMono-Regular',Menlo,monospace;
   --r:9px; --r-lg:14px;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px;
   --shadow:0 1px 2px rgba(21,24,26,.07),0 10px 26px -14px rgba(21,24,26,.26);
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
@@ -156,12 +157,13 @@ svg{display:block}
 .blk[data-type="text"] .lbl{font-size:15.5px;font-weight:400;color:var(--f-muted)}
 .req{color:var(--danger);font-weight:600;margin-left:3px}
 .field{margin-top:7px}
-.fi{width:100%;background:var(--f-soft);border:1px solid transparent;border-bottom:1px solid var(--f-line);border-radius:var(--f-r) var(--f-r) 0 0;padding:9px 11px;font-size:15px;font-family:inherit;color:inherit}
-.fi::placeholder{color:var(--f-muted);opacity:.62}
-.fi:focus{outline:none;border-bottom-color:var(--f-accent);background:var(--f-soft)}
-textarea.fi{resize:vertical;min-height:76px;border-radius:var(--f-r)}
-.opts{display:flex;flex-direction:column;gap:6px}
-.opt{display:flex;align-items:center;gap:9px;padding:8px 11px;border:1px solid var(--f-line);border-radius:var(--f-r);background:var(--f-bg);min-width:0}
+.fi{width:100%;background:var(--f-bg);border:1px solid var(--f-line);border-radius:var(--f-r);padding:var(--sp-2) var(--sp-3);font-size:15px;font-family:inherit;color:inherit}
+.fi::placeholder{color:var(--f-muted);opacity:.72}
+.fi:focus{outline:none;border-color:var(--f-accent-text);box-shadow:0 0 0 3px var(--f-wash)}
+textarea.fi{resize:vertical;min-height:76px;line-height:1.5}
+select.fi{height:40px;padding-right:var(--sp-2)}
+.opts{display:flex;flex-direction:column;gap:var(--sp-1)}
+.opt{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3);border:1px solid var(--f-line);border-radius:var(--f-r);background:var(--f-bg);min-width:0}
 .opt .mk{flex:none;width:17px;height:17px;border:1.5px solid var(--f-line);border-radius:50%;display:grid;place-items:center}
 .opt.sq .mk{border-radius:5px}
 .opt input{flex:1;min-width:0;background:none;border:0;padding:0;font-family:inherit;font-size:15px}
@@ -185,9 +187,9 @@ textarea.fi{resize:vertical;min-height:76px;border-radius:var(--f-r)}
 .scale-ends input:focus{outline:none}
 .drop{border:1.5px dashed var(--f-line);border-radius:var(--f-r);padding:18px;text-align:center;color:var(--f-muted);font-size:13.5px}
 .rule{height:1px;background:var(--f-line);margin:14px 0}
-.logic{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:9px 0 3px;padding:9px 10px;border:1px solid var(--f-line);border-radius:var(--f-r);background:var(--f-soft)}
+.logic{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);margin:var(--sp-3) 0 var(--sp-1);padding:var(--sp-3) var(--sp-4);border:1px solid var(--f-line);border-radius:var(--f-r);background:var(--f-soft)}
 .logic .lg{font-weight:500;font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--f-muted)}
-.logic select,.logic input{background:var(--f-bg);border:1px solid var(--f-line);border-radius:7px;padding:4px 7px;font-size:12.5px;font-family:inherit;max-width:168px;min-width:0}
+.logic select,.logic input{height:30px;background:var(--f-bg);border:1px solid var(--f-line);border-radius:7px;padding:0 var(--sp-2);font-size:13px;font-family:inherit;max-width:168px;min-width:0;color:inherit}
 .logic select:focus,.logic input:focus{outline:none;border-color:var(--f-accent)}
 .logic .rm{margin-left:auto;color:var(--f-muted);padding:0 4px}
 .logic .rm:hover{color:var(--danger)}
@@ -206,7 +208,7 @@ textarea.fi{resize:vertical;min-height:76px;border-radius:var(--f-r)}
 /* The toolbar and the block menu act on the form sheet, so they take the
    sheet's tokens, not the app's. Otherwise forcing a light form under a dark
    OS floats a near-black pill over cream. */
-.toolbar{position:absolute;right:0;top:-32px;z-index:5;display:flex;align-items:center;gap:2px;background:var(--f-bg);border:1px solid var(--f-line);border-radius:9px;padding:3px;box-shadow:var(--shadow)}
+.toolbar{position:absolute;right:0;top:-40px;z-index:5;display:flex;align-items:center;gap:2px;background:var(--f-bg);border:1px solid var(--f-line);border-radius:9px;padding:3px;box-shadow:var(--shadow)}
 .toolbar button{display:flex;align-items:center;gap:5px;padding:4px 8px;border-radius:6px;font-size:12.5px;color:var(--f-muted)}
 .toolbar button:hover{background:var(--f-soft);color:var(--f-fg)}
 .toolbar button.on{color:var(--f-accent-text);background:var(--f-wash)}
@@ -529,7 +531,7 @@ function pagesOf(f){
 }
 function themeVars(f){
   const t = f.theme;
-  return `--f-accent:${t.accent};--f-r:${t.radius}px;--f-font:${FONTS[t.font]||FONTS.sans}`;
+  return `--f-accent:${t.accent};--f-r:${Math.min(Number(t.radius)||0,16)}px;--f-font:${FONTS[t.font]||FONTS.sans}`;
 }
 
 /* ---------- conditional logic ---------- */
@@ -980,7 +982,7 @@ function renderPanel(){
       <div class="fld"><label>Typeface</label><div class="chips">${['sans','serif','mono'].map(k=>`<button data-act="th" data-k="font" data-v="${k}" aria-pressed="${t.font===k}" style="font-family:${FONTS[k]}">${FONT_NAMES[k]}</button>`).join('')}</div></div>
       <div class="fld"><label>Alignment</label><div class="chips">${['left','center'].map(k=>`<button data-act="th" data-k="align" data-v="${k}" aria-pressed="${t.align===k}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div></div>
       <div class="fld"><label>Background</label><div class="chips">${['auto','light','dark'].map(k=>`<button data-act="th" data-k="bg" data-v="${k}" aria-pressed="${t.bg===k}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div></div>
-      <div class="fld"><label>Corners</label><div class="chips">${[[0,'Sharp'],[10,'Soft'],[999,'Pill']].map(([v,n])=>`<button data-act="th" data-k="radius" data-v="${v}" aria-pressed="${t.radius==v}">${n}</button>`).join('')}</div></div>
+      <div class="fld"><label>Corners</label><div class="chips">${[[2,'Sharp'],[10,'Soft'],[16,'Round']].map(([v,n])=>`<button data-act="th" data-k="radius" data-v="${v}" aria-pressed="${t.radius==v}">${n}</button>`).join('')}</div></div>
       <div class="fld"><label>Submit button</label><input type="text" value="${esc(t.submit)}" data-th="submit"></div>
       <div class="fld"><label>Thank-you message</label><input type="text" value="${esc(t.thanks)}" data-th="thanks"></div>`;
   } else {
