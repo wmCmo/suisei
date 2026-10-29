@@ -78,7 +78,7 @@ function block(type, label, extra){
   return Object.assign(b, extra||{});
 }
 function newForm(title, blocks, logic){
-  return {id:uid('f'), title:title||'Untitled form', blocks:blocks||[block('short_text','')], logic:logic||[], hidden:[],
+  return {id:uid('f'), title:title||'Untitled form', emoji:'', blocks:blocks||[block('short_text','')], logic:logic||[], hidden:[],
     theme:{accent:ACCENTS[0], font:'sans', align:'left', radius:10, bg:'auto', runner:'grid', submit:'Submit', thanks:'Thanks for filling this out.'},
     createdAt:Date.now(), updatedAt:Date.now()};
 }
@@ -129,6 +129,13 @@ const TEMPLATES = {
 /* ============================ store ============================ */
 const LS = 'suisei.v1';
 const CFG = window.SUISEI || {};
+/* Microsoft's Fluent Emoji, MIT licensed, served from the repo at a pinned
+   commit. Flat is the SVG style: a couple of KB each, so a grid of them is
+   cheaper than one 3D png. */
+const EMOJI = CFG.emoji || {ref:'main', list:[]};
+const emojiUrl = p => 'https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@' + EMOJI.ref
+  + '/assets/' + String(p).split('/').map(encodeURIComponent).join('/');
+const emojiImg = (p, cls) => `<img class="${cls}" src="${emojiUrl(p)}" alt="" loading="lazy" decoding="async">`;
 const sb = (CFG.url && CFG.key && window.supabase)
   ? window.supabase.createClient(CFG.url, CFG.key,
       {auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}})
@@ -259,7 +266,7 @@ const store = {
 /* ============================ app state ============================ */
 const state = {view:'home', formId:null, sel:null, focus:null, menu:null, panel:null,
   dirtyUntil:0, page:0, step:0, hist:[], answers:{}, bad:{}, done:false, rows:null, confirmDel:null,
-  hidden:{}, testHidden:{}};
+  hidden:{}, testHidden:{}, emojiQ:''};
 const form = () => store.forms[state.formId];
 const bar = document.getElementById('bar');
 const stage = document.getElementById('stage');
@@ -525,7 +532,7 @@ function renderBar(){
       <div class="tools"><button class="btn" data-act="exit-fill">${I.back}<span class="hide-sm">Back to editor</span></button></div>`;
   }
   return `<div class="mark"><i>水</i>Suisei</div>
-    <div class="crumb"><span class="sep">/</span><input id="ftitle-bar" value="${esc(f.title)}" data-bind="title" aria-label="Form name"></div>
+    <div class="crumb"><span class="sep">/</span>${f.emoji?emojiImg(f.emoji,"crumbicon"):""}<input id="ftitle-bar" value="${esc(f.title)}" data-bind="title" aria-label="Form name"></div>
     ${tabs}
     <div class="tools">
       ${accountBit()}
@@ -544,7 +551,7 @@ function renderHome(){
     const pages = pagesOf(f).length;
     return `<div class="card">
       <div class="row">
-        <h3 data-act="open" data-id="${f.id}" style="cursor:pointer;flex:1;min-width:0">${esc(f.title)}</h3>
+        <h3 data-act="open" data-id="${f.id}" style="cursor:pointer;flex:1;min-width:0">${f.emoji?emojiImg(f.emoji,"cardicon"):""}${esc(f.title)}</h3>
         <button class="x" data-act="del-form" data-id="${f.id}">${state.confirmDel===f.id?'Delete?':'Remove'}</button>
       </div>
       <div class="strip"><i style="width:${Math.min(100, n*8)}%;background:${f.theme.accent}"></i></div>
@@ -591,6 +598,8 @@ function renderBuild(){
   }).join('');
   return `<div class="canvasform" data-bg="${f.theme.bg}" data-align="${f.theme.align}" style="${themeVars(f)};min-height:calc(100vh - 52px)">
     <div class="col">
+      <button class="formicon" data-act="emoji" title="${f.emoji?'Change the icon':'Add an icon'}">${
+        f.emoji ? emojiImg(f.emoji,'') : '<span class="addicon">+ Icon</span>'}</button>
       <textarea class="ftitle" rows="1" data-bind="title" placeholder="Form title">${esc(f.title)}</textarea>
       <div class="blocks" id="blocks">${body}</div>
       <button class="addopt" style="margin-top:14px" data-act="add-block" data-at="${f.blocks.length}">+ Add a block</button>
@@ -711,7 +720,7 @@ function renderFill(){
   const hv = Object.keys(state.hidden||{});
   const peek = ((store.editor || !store.sb) && hv.length)
     ? `<div class="hfrow" style="margin:0 0 22px;padding:0;border:0">${hv.map(k=>`<code>@${esc(k)} = ${esc(state.hidden[k])}</code>`).join('')}<span class="lg">editors only</span></div>` : '';
-  const title = `<h1 class="ftitle-read">${esc(f.title)}</h1>`;
+  const title = `${f.emoji?emojiImg(f.emoji,'formicon-read'):''}<h1 class="ftitle-read">${esc(f.title)}</h1>`;
 
   if(stepped){
     const cur = steps[Math.min(state.step, steps.length-1)];
@@ -843,6 +852,12 @@ function csv(){
 }
 
 /* ============================ panels ============================ */
+function emojiGrid(){
+  const q = (state.emojiQ||'').trim().toLowerCase();
+  const hits = EMOJI.list.filter(e => !q || e.n.toLowerCase().includes(q));
+  if(!hits.length) return `<div class="none">No icon matches “${esc(q)}”</div>`;
+  return hits.map(e => `<button data-act="pick-emoji" data-p="${esc(e.p)}" title="${esc(e.n)}">${emojiImg(e.p,'')}</button>`).join('');
+}
 function renderPanel(){
   const f = form();
   // the account panel belongs to the app, not to a form, so it opens on the
@@ -850,7 +865,13 @@ function renderPanel(){
   if(!f && state.panel !== 'account') return;
   const scrim = document.createElement('div'); scrim.className='scrim'; scrim.dataset.act='close-panel';
   const p = document.createElement('div'); p.className='panel';
-  if(state.panel==='account'){
+  if(state.panel==='emoji'){
+    p.innerHTML = `<h4>Form icon</h4>
+      <div class="fld"><input type="text" id="emoji-q" placeholder="Search ${EMOJI.list.length} icons" aria-label="Search icons" value="${esc(state.emojiQ||'')}"></div>
+      <div class="egrid" id="emoji-grid">${emojiGrid()}</div>
+      ${f && f.emoji?`<button class="btn ghost" style="width:100%;justify-content:center;margin-top:var(--sp-3)" data-act="clear-emoji">Remove the icon</button>`:''}
+      <p class="note" style="margin-top:var(--sp-3)">Fluent Emoji by Microsoft, MIT licensed.</p>`;
+  } else if(state.panel==='account'){
     const signedIn = !!store.user;
     p.innerHTML = `<h4>${signedIn?'Signed in':'Sign in'}</h4>
       ${signedIn
@@ -1011,6 +1032,9 @@ document.addEventListener('click', e=>{
     case 'tab': go(a.dataset.v); break;
     case 'preview': state.panel=null; go('fill', state.formId); break;
     case 'exit-fill': go('build', state.formId); break;
+    case 'emoji': state.panel = state.panel==='emoji'?null:'emoji'; state.emojiQ=''; render(); break;
+    case 'pick-emoji': { f.emoji = a.dataset.p; state.panel=null; dirty(); render(); break; }
+    case 'clear-emoji': { f.emoji = ''; state.panel=null; dirty(); render(); break; }
     case 'account': state.panel = state.panel==='account'?null:'account'; render(); break;
     case 'google': {
       a.disabled = true;
@@ -1126,6 +1150,12 @@ document.addEventListener('input', e=>{
     return;
   }
   if(t.dataset.th && f){ f.theme[t.dataset.th] = t.value; store.saveForm(f); state.dirtyUntil = Date.now()+4000; return; }
+  if(t.id === 'emoji-q'){
+    state.emojiQ = t.value;
+    const g = document.getElementById('emoji-grid');
+    if(g) g.innerHTML = emojiGrid();
+    return;
+  }
   if(t.dataset.hf !== undefined && f){
     state.testHidden = state.testHidden || {};
     state.testHidden[t.dataset.hf] = t.value;

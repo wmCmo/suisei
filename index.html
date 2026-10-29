@@ -323,6 +323,20 @@ td.when{color:var(--muted);font-variant-numeric:tabular-nums}
 .q .ql-xl{font-size:var(--fs-display);line-height:var(--lh-display);font-weight:700;letter-spacing:-.025em;margin-bottom:var(--sp-5)}
 .runner{display:block;margin-top:var(--sp-7);color:var(--f-muted);font-size:var(--fs-caption);line-height:var(--lh-caption);text-decoration:underline;text-underline-offset:3px}
 .runner:hover{color:var(--f-accent-text)}
+
+/* the form's icon, and the grid it is chosen from */
+.formicon{display:flex;align-items:center;justify-content:center;width:60px;height:60px;border-radius:var(--r-lg);margin-bottom:var(--sp-2)}
+.formicon:hover{background:var(--f-soft)}
+.formicon img{width:48px;height:48px}
+.formicon .addicon{font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--f-muted)}
+.formicon-read{width:52px;height:52px;display:block;margin-bottom:var(--sp-3)}
+.canvasform[data-align="center"] .formicon,.canvasform[data-align="center"] .formicon-read{margin-left:auto;margin-right:auto}
+.cardicon{width:20px;height:20px;vertical-align:-4px;margin-right:var(--sp-1)}
+.crumbicon{width:18px;height:18px}
+.egrid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:var(--sp-1);max-height:264px;overflow:auto;padding-right:var(--sp-1)}
+.egrid button{display:grid;place-items:center;padding:var(--sp-1);border-radius:var(--r-sm)}
+.egrid button:hover{background:var(--sunk)}
+.egrid img{width:24px;height:24px}
 </style>
 </head>
 <body>
@@ -331,7 +345,7 @@ td.when{color:var(--muted);font-variant-numeric:tabular-nums}
 <div class="stage" id="stage"></div>
 <div id="layer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script>window.SUISEI={url:"https://ygdzcaneqpgkuumibtga.supabase.co",key:"sb_publishable_JvtFENRbPLMdQXbtCLTxRA_FLvKqJea"};</script>
+<script>window.SUISEI={"url":"https://ygdzcaneqpgkuumibtga.supabase.co","key":"sb_publishable_JvtFENRbPLMdQXbtCLTxRA_FLvKqJea","emoji":{"ref":"1ffb34c752ecf5d402f04cfb4b392c77f57c54bc","list":[{"n":"1st place medal","p":"1st place medal/Flat/1st_place_medal_flat.svg"},{"n":"Airplane","p":"Airplane/Flat/airplane_flat.svg"},{"n":"Alarm clock","p":"Alarm clock/Flat/alarm_clock_flat.svg"},{"n":"Anchor","p":"Anchor/Flat/anchor_flat.svg"},{"n":"Artist palette","p":"Artist palette/Flat/artist_palette_flat.svg"},{"n":"Automobile","p":"Automobile/Flat/automobile_flat.svg"},{"n":"Avocado","p":"Avocado/Flat/avocado_flat.svg"},{"n":"Balloon","p":"Balloon/Flat/balloon_flat.svg"},{"n":"Banana","p":"Banana/Flat/banana_flat.svg"},{"n":"Bar chart","p":"Bar chart/Flat/bar_chart_flat.svg"},{"n":"Beach with umbrella","p":"Beach with umbrella/Flat/beach_with_umbrella_flat.svg"},{"n":"Bear","p":"Bear/Flat/bear_flat.svg"},{"n":"Beer mug","p":"Beer mug/Flat/beer_mug_flat.svg"},{"n":"Bell","p":"Bell/Flat/bell_flat.svg"},{"n":"Bento box","p":"Bento box/Flat/bento_box_flat.svg"},{"n":"Bicycle","p":"Bicycle/Flat/bicycle_flat.svg"},{"n":"Birthday cake","p":"Birthday cake/Flat/birthday_cake_flat.svg"},{"n":"Blue heart","p":"Blue heart/Flat/blue_heart_flat.svg"},{"n":"Bookmark","p":"Bookmark/Flat/bookmark_flat.svg"},{"n":"Books","p":"Books/Flat/books_flat.svg"},{"n":"Briefcase","p":"Briefcase/Flat/briefcase_flat.svg"},{"n":"Broccoli","p":"Broccoli/Flat/broccoli_flat.svg"},{"n":"Bubble tea","p":"Bubble tea/Flat/bubble_tea_flat.svg"},{"n":"Bullseye","p":"Bullseye/Flat/bullseye_flat.svg"},{"n":"Butterfly","p":"Butterfly/Flat/butterfly_flat.svg"},{"n":"Cactus","p":"Cactus/Flat/cactus_flat.svg"},{"n":"Calendar","p":"Calendar/Flat/calendar_flat.svg"},{"n":"Camera","p":"Camera/Flat/camera_flat.svg"},{"n":"Camping","p":"Camping/Flat/camping_flat.svg"},{"n":"Card index dividers","p":"Card index dividers/Flat/card_index_dividers_flat.svg"},{"n":"Castle","p":"Castle/Flat/castle_flat.svg"},{"n":"Cat face","p":"Cat face/Flat/cat_face_flat.svg"},{"n":"Chart increasing","p":"Chart increasing/Flat/chart_increasing_flat.svg"},{"n":"Check mark button","p":"Check mark button/Flat/check_mark_button_flat.svg"},{"n":"Cherry blossom","p":"Cherry blossom/Flat/cherry_blossom_flat.svg"},{"n":"Clapping hands","p":"Clapping hands/Default/Flat/clapping_hands_flat_default.svg"},{"n":"Clinking beer mugs","p":"Clinking beer mugs/Flat/clinking_beer_mugs_flat.svg"},{"n":"Clipboard","p":"Clipboard/Flat/clipboard_flat.svg"},{"n":"Cloud","p":"Cloud/Flat/cloud_flat.svg"},{"n":"Compass","p":"Compass/Flat/compass_flat.svg"},{"n":"Confetti ball","p":"Confetti ball/Flat/confetti_ball_flat.svg"},{"n":"Cookie","p":"Cookie/Flat/cookie_flat.svg"},{"n":"Crayon","p":"Crayon/Flat/crayon_flat.svg"},{"n":"Credit card","p":"Credit card/Flat/credit_card_flat.svg"},{"n":"Crescent moon","p":"Crescent moon/Flat/crescent_moon_flat.svg"},{"n":"Cross mark","p":"Cross mark/Flat/cross_mark_flat.svg"},{"n":"Cup with straw","p":"Cup with straw/Flat/cup_with_straw_flat.svg"},{"n":"Deciduous tree","p":"Deciduous tree/Flat/deciduous_tree_flat.svg"},{"n":"Desktop computer","p":"Desktop computer/Flat/desktop_computer_flat.svg"},{"n":"Dog","p":"Dog/Flat/dog_flat.svg"},{"n":"Dollar banknote","p":"Dollar banknote/Flat/dollar_banknote_flat.svg"},{"n":"Dolphin","p":"Dolphin/Flat/dolphin_flat.svg"},{"n":"Doughnut","p":"Doughnut/Flat/doughnut_flat.svg"},{"n":"Droplet","p":"Droplet/Flat/droplet_flat.svg"},{"n":"Envelope","p":"Envelope/Flat/envelope_flat.svg"},{"n":"Face blowing a kiss","p":"Face blowing a kiss/Flat/face_blowing_a_kiss_flat.svg"},{"n":"Face with monocle","p":"Face with monocle/Flat/face_with_monocle_flat.svg"},{"n":"Face with tears of joy","p":"Face with tears of joy/Flat/face_with_tears_of_joy_flat.svg"},{"n":"Fire","p":"Fire/Flat/fire_flat.svg"},{"n":"Flexed biceps","p":"Flexed biceps/Default/Flat/flexed_biceps_flat_default.svg"},{"n":"Folded hands","p":"Folded hands/Default/Flat/folded_hands_flat_default.svg"},{"n":"Four leaf clover","p":"Four leaf clover/Flat/four_leaf_clover_flat.svg"},{"n":"Fox","p":"Fox/Flat/fox_flat.svg"},{"n":"French fries","p":"French fries/Flat/french_fries_flat.svg"},{"n":"Gear","p":"Gear/Flat/gear_flat.svg"},{"n":"Glowing star","p":"Glowing star/Flat/glowing_star_flat.svg"},{"n":"Grapes","p":"Grapes/Flat/grapes_flat.svg"},{"n":"Green apple","p":"Green apple/Flat/green_apple_flat.svg"},{"n":"Green heart","p":"Green heart/Flat/green_heart_flat.svg"},{"n":"Grinning face","p":"Grinning face/Flat/grinning_face_flat.svg"},{"n":"Hamburger","p":"Hamburger/Flat/hamburger_flat.svg"},{"n":"Hammer","p":"Hammer/Flat/hammer_flat.svg"},{"n":"Headphone","p":"Headphone/Flat/headphone_flat.svg"},{"n":"Herb","p":"Herb/Flat/herb_flat.svg"},{"n":"High voltage","p":"High voltage/Flat/high_voltage_flat.svg"},{"n":"Honeybee","p":"Honeybee/Flat/honeybee_flat.svg"},{"n":"Hospital","p":"Hospital/Flat/hospital_flat.svg"},{"n":"Hot beverage","p":"Hot beverage/Flat/hot_beverage_flat.svg"},{"n":"Hourglass done","p":"Hourglass done/Flat/hourglass_done_flat.svg"},{"n":"House","p":"House/Flat/house_flat.svg"},{"n":"Hugging face","p":"Hugging face/Flat/hugging_face_flat.svg"},{"n":"Hundred points","p":"Hundred points/Flat/hundred_points_flat.svg"},{"n":"Inbox tray","p":"Inbox tray/Flat/inbox_tray_flat.svg"},{"n":"Index pointing up","p":"Index pointing up/Default/Flat/index_pointing_up_flat_default.svg"},{"n":"Infinity","p":"Infinity/Flat/infinity_flat.svg"},{"n":"Information","p":"Information/Flat/information_flat.svg"},{"n":"Key","p":"Key/Flat/key_flat.svg"},{"n":"Label","p":"Label/Flat/label_flat.svg"},{"n":"Laptop","p":"Laptop/Flat/laptop_flat.svg"},{"n":"Light bulb","p":"Light bulb/Flat/light_bulb_flat.svg"},{"n":"Link","p":"Link/Flat/link_flat.svg"},{"n":"Locked","p":"Locked/Flat/locked_flat.svg"},{"n":"Locomotive","p":"Locomotive/Flat/locomotive_flat.svg"},{"n":"Magnifying glass tilted left","p":"Magnifying glass tilted left/Flat/magnifying_glass_tilted_left_flat.svg"},{"n":"Maple leaf","p":"Maple leaf/Flat/maple_leaf_flat.svg"},{"n":"Megaphone","p":"Megaphone/Flat/megaphone_flat.svg"},{"n":"Melting face","p":"Melting face/Flat/melting_face_flat.svg"},{"n":"Memo","p":"Memo/Flat/memo_flat.svg"},{"n":"Microphone","p":"Microphone/Flat/microphone_flat.svg"},{"n":"Microscope","p":"Microscope/Flat/microscope_flat.svg"},{"n":"Mobile phone","p":"Mobile phone/Flat/mobile_phone_flat.svg"},{"n":"Money bag","p":"Money bag/Flat/money_bag_flat.svg"},{"n":"Mountain","p":"Mountain/Flat/mountain_flat.svg"},{"n":"Mushroom","p":"Mushroom/Flat/mushroom_flat.svg"},{"n":"National park","p":"National park/Flat/national_park_flat.svg"},{"n":"Nerd face","p":"Nerd face/Flat/nerd_face_flat.svg"},{"n":"Octopus","p":"Octopus/Flat/octopus_flat.svg"},{"n":"Office building","p":"Office building/Flat/office_building_flat.svg"},{"n":"Open book","p":"Open book/Flat/open_book_flat.svg"},{"n":"Orange heart","p":"Orange heart/Flat/orange_heart_flat.svg"},{"n":"Package","p":"Package/Flat/package_flat.svg"},{"n":"Paintbrush","p":"Paintbrush/Flat/paintbrush_flat.svg"},{"n":"Panda","p":"Panda/Flat/panda_flat.svg"},{"n":"Paperclip","p":"Paperclip/Flat/paperclip_flat.svg"},{"n":"Party popper","p":"Party popper/Flat/party_popper_flat.svg"},{"n":"Partying face","p":"Partying face/Flat/partying_face_flat.svg"},{"n":"Pencil","p":"Pencil/Flat/pencil_flat.svg"},{"n":"Penguin","p":"Penguin/Flat/penguin_flat.svg"},{"n":"Pizza","p":"Pizza/Flat/pizza_flat.svg"},{"n":"Potted plant","p":"Potted plant/Flat/potted_plant_flat.svg"},{"n":"Purple heart","p":"Purple heart/Flat/purple_heart_flat.svg"},{"n":"Pushpin","p":"Pushpin/Flat/pushpin_flat.svg"},{"n":"Rabbit face","p":"Rabbit face/Flat/rabbit_face_flat.svg"},{"n":"Rainbow","p":"Rainbow/Flat/rainbow_flat.svg"},{"n":"Raising hands","p":"Raising hands/Default/Flat/raising_hands_flat_default.svg"},{"n":"Recycling symbol","p":"Recycling symbol/Flat/recycling_symbol_flat.svg"},{"n":"Red apple","p":"Red apple/Flat/red_apple_flat.svg"},{"n":"Red heart","p":"Red heart/Flat/red_heart_flat.svg"},{"n":"Red question mark","p":"Red question mark/Flat/red_question_mark_flat.svg"},{"n":"Rice ball","p":"Rice ball/Flat/rice_ball_flat.svg"},{"n":"Rocket","p":"Rocket/Flat/rocket_flat.svg"},{"n":"Rose","p":"Rose/Flat/rose_flat.svg"},{"n":"Round pushpin","p":"Round pushpin/Flat/round_pushpin_flat.svg"},{"n":"Sailboat","p":"Sailboat/Flat/sailboat_flat.svg"},{"n":"Saluting face","p":"Saluting face/Flat/saluting_face_flat.svg"},{"n":"School","p":"School/Flat/school_flat.svg"},{"n":"Scissors","p":"Scissors/Flat/scissors_flat.svg"},{"n":"Seedling","p":"Seedling/Flat/seedling_flat.svg"},{"n":"Shopping cart","p":"Shopping cart/Flat/shopping_cart_flat.svg"},{"n":"Shortcake","p":"Shortcake/Flat/shortcake_flat.svg"},{"n":"Shushing face","p":"Shushing face/Flat/shushing_face_flat.svg"},{"n":"Smiling face with hearts","p":"Smiling face with hearts/Flat/smiling_face_with_hearts_flat.svg"},{"n":"Smiling face with smiling eyes","p":"Smiling face with smiling eyes/Flat/smiling_face_with_smiling_eyes_flat.svg"},{"n":"Smiling face with sunglasses","p":"Smiling face with sunglasses/Flat/smiling_face_with_sunglasses_flat.svg"},{"n":"Snowflake","p":"Snowflake/Flat/snowflake_flat.svg"},{"n":"Sparkles","p":"Sparkles/Flat/sparkles_flat.svg"},{"n":"Sparkling heart","p":"Sparkling heart/Flat/sparkling_heart_flat.svg"},{"n":"Speech balloon","p":"Speech balloon/Flat/speech_balloon_flat.svg"},{"n":"Spiral calendar","p":"Spiral calendar/Flat/spiral_calendar_flat.svg"},{"n":"Star","p":"Star/Flat/star_flat.svg"},{"n":"Steaming bowl","p":"Steaming bowl/Flat/steaming_bowl_flat.svg"},{"n":"Straight ruler","p":"Straight ruler/Flat/straight_ruler_flat.svg"},{"n":"Strawberry","p":"Strawberry/Flat/strawberry_flat.svg"},{"n":"Sun","p":"Sun/Flat/sun_flat.svg"},{"n":"Sunflower","p":"Sunflower/Flat/sunflower_flat.svg"},{"n":"Sushi","p":"Sushi/Flat/sushi_flat.svg"},{"n":"Teacup without handle","p":"Teacup without handle/Flat/teacup_without_handle_flat.svg"},{"n":"Telescope","p":"Telescope/Flat/telescope_flat.svg"},{"n":"Test tube","p":"Test tube/Flat/test_tube_flat.svg"},{"n":"Thinking face","p":"Thinking face/Flat/thinking_face_flat.svg"},{"n":"Thought balloon","p":"Thought balloon/Flat/thought_balloon_flat.svg"},{"n":"Thumbs up","p":"Thumbs up/Default/Flat/thumbs_up_flat_default.svg"},{"n":"Ticket","p":"Ticket/Flat/ticket_flat.svg"},{"n":"Tokyo tower","p":"Tokyo tower/Flat/tokyo_tower_flat.svg"},{"n":"Toolbox","p":"Toolbox/Flat/toolbox_flat.svg"},{"n":"Trophy","p":"Trophy/Flat/trophy_flat.svg"},{"n":"Tulip","p":"Tulip/Flat/tulip_flat.svg"},{"n":"Turtle","p":"Turtle/Flat/turtle_flat.svg"},{"n":"Unicorn","p":"Unicorn/Flat/unicorn_flat.svg"},{"n":"Unlocked","p":"Unlocked/Flat/unlocked_flat.svg"},{"n":"Victory hand","p":"Victory hand/Default/Flat/victory_hand_flat_default.svg"},{"n":"Warning","p":"Warning/Flat/warning_flat.svg"},{"n":"Water wave","p":"Water wave/Flat/water_wave_flat.svg"},{"n":"Watermelon","p":"Watermelon/Flat/watermelon_flat.svg"},{"n":"Waving hand","p":"Waving hand/Default/Flat/waving_hand_flat_default.svg"},{"n":"Whale","p":"Whale/Flat/whale_flat.svg"},{"n":"Wine glass","p":"Wine glass/Flat/wine_glass_flat.svg"},{"n":"Winking face","p":"Winking face/Flat/winking_face_flat.svg"},{"n":"World map","p":"World map/Flat/world_map_flat.svg"},{"n":"Wrapped gift","p":"Wrapped gift/Flat/wrapped_gift_flat.svg"},{"n":"Wrench","p":"Wrench/Flat/wrench_flat.svg"},{"n":"Writing hand","p":"Writing hand/Default/Flat/writing_hand_flat_default.svg"},{"n":"Yellow heart","p":"Yellow heart/Flat/yellow_heart_flat.svg"}]}};</script>
 <script>
 "use strict";
 /* ============================ model ============================ */
@@ -413,7 +427,7 @@ function block(type, label, extra){
   return Object.assign(b, extra||{});
 }
 function newForm(title, blocks, logic){
-  return {id:uid('f'), title:title||'Untitled form', blocks:blocks||[block('short_text','')], logic:logic||[], hidden:[],
+  return {id:uid('f'), title:title||'Untitled form', emoji:'', blocks:blocks||[block('short_text','')], logic:logic||[], hidden:[],
     theme:{accent:ACCENTS[0], font:'sans', align:'left', radius:10, bg:'auto', runner:'grid', submit:'Submit', thanks:'Thanks for filling this out.'},
     createdAt:Date.now(), updatedAt:Date.now()};
 }
@@ -464,6 +478,13 @@ const TEMPLATES = {
 /* ============================ store ============================ */
 const LS = 'suisei.v1';
 const CFG = window.SUISEI || {};
+/* Microsoft's Fluent Emoji, MIT licensed, served from the repo at a pinned
+   commit. Flat is the SVG style: a couple of KB each, so a grid of them is
+   cheaper than one 3D png. */
+const EMOJI = CFG.emoji || {ref:'main', list:[]};
+const emojiUrl = p => 'https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@' + EMOJI.ref
+  + '/assets/' + String(p).split('/').map(encodeURIComponent).join('/');
+const emojiImg = (p, cls) => `<img class="${cls}" src="${emojiUrl(p)}" alt="" loading="lazy" decoding="async">`;
 const sb = (CFG.url && CFG.key && window.supabase)
   ? window.supabase.createClient(CFG.url, CFG.key,
       {auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}})
@@ -594,7 +615,7 @@ const store = {
 /* ============================ app state ============================ */
 const state = {view:'home', formId:null, sel:null, focus:null, menu:null, panel:null,
   dirtyUntil:0, page:0, step:0, hist:[], answers:{}, bad:{}, done:false, rows:null, confirmDel:null,
-  hidden:{}, testHidden:{}};
+  hidden:{}, testHidden:{}, emojiQ:''};
 const form = () => store.forms[state.formId];
 const bar = document.getElementById('bar');
 const stage = document.getElementById('stage');
@@ -860,7 +881,7 @@ function renderBar(){
       <div class="tools"><button class="btn" data-act="exit-fill">${I.back}<span class="hide-sm">Back to editor</span></button></div>`;
   }
   return `<div class="mark"><i>水</i>Suisei</div>
-    <div class="crumb"><span class="sep">/</span><input id="ftitle-bar" value="${esc(f.title)}" data-bind="title" aria-label="Form name"></div>
+    <div class="crumb"><span class="sep">/</span>${f.emoji?emojiImg(f.emoji,"crumbicon"):""}<input id="ftitle-bar" value="${esc(f.title)}" data-bind="title" aria-label="Form name"></div>
     ${tabs}
     <div class="tools">
       ${accountBit()}
@@ -879,7 +900,7 @@ function renderHome(){
     const pages = pagesOf(f).length;
     return `<div class="card">
       <div class="row">
-        <h3 data-act="open" data-id="${f.id}" style="cursor:pointer;flex:1;min-width:0">${esc(f.title)}</h3>
+        <h3 data-act="open" data-id="${f.id}" style="cursor:pointer;flex:1;min-width:0">${f.emoji?emojiImg(f.emoji,"cardicon"):""}${esc(f.title)}</h3>
         <button class="x" data-act="del-form" data-id="${f.id}">${state.confirmDel===f.id?'Delete?':'Remove'}</button>
       </div>
       <div class="strip"><i style="width:${Math.min(100, n*8)}%;background:${f.theme.accent}"></i></div>
@@ -926,6 +947,8 @@ function renderBuild(){
   }).join('');
   return `<div class="canvasform" data-bg="${f.theme.bg}" data-align="${f.theme.align}" style="${themeVars(f)};min-height:calc(100vh - 52px)">
     <div class="col">
+      <button class="formicon" data-act="emoji" title="${f.emoji?'Change the icon':'Add an icon'}">${
+        f.emoji ? emojiImg(f.emoji,'') : '<span class="addicon">+ Icon</span>'}</button>
       <textarea class="ftitle" rows="1" data-bind="title" placeholder="Form title">${esc(f.title)}</textarea>
       <div class="blocks" id="blocks">${body}</div>
       <button class="addopt" style="margin-top:14px" data-act="add-block" data-at="${f.blocks.length}">+ Add a block</button>
@@ -1046,7 +1069,7 @@ function renderFill(){
   const hv = Object.keys(state.hidden||{});
   const peek = ((store.editor || !store.sb) && hv.length)
     ? `<div class="hfrow" style="margin:0 0 22px;padding:0;border:0">${hv.map(k=>`<code>@${esc(k)} = ${esc(state.hidden[k])}</code>`).join('')}<span class="lg">editors only</span></div>` : '';
-  const title = `<h1 class="ftitle-read">${esc(f.title)}</h1>`;
+  const title = `${f.emoji?emojiImg(f.emoji,'formicon-read'):''}<h1 class="ftitle-read">${esc(f.title)}</h1>`;
 
   if(stepped){
     const cur = steps[Math.min(state.step, steps.length-1)];
@@ -1178,6 +1201,12 @@ function csv(){
 }
 
 /* ============================ panels ============================ */
+function emojiGrid(){
+  const q = (state.emojiQ||'').trim().toLowerCase();
+  const hits = EMOJI.list.filter(e => !q || e.n.toLowerCase().includes(q));
+  if(!hits.length) return `<div class="none">No icon matches “${esc(q)}”</div>`;
+  return hits.map(e => `<button data-act="pick-emoji" data-p="${esc(e.p)}" title="${esc(e.n)}">${emojiImg(e.p,'')}</button>`).join('');
+}
 function renderPanel(){
   const f = form();
   // the account panel belongs to the app, not to a form, so it opens on the
@@ -1185,7 +1214,13 @@ function renderPanel(){
   if(!f && state.panel !== 'account') return;
   const scrim = document.createElement('div'); scrim.className='scrim'; scrim.dataset.act='close-panel';
   const p = document.createElement('div'); p.className='panel';
-  if(state.panel==='account'){
+  if(state.panel==='emoji'){
+    p.innerHTML = `<h4>Form icon</h4>
+      <div class="fld"><input type="text" id="emoji-q" placeholder="Search ${EMOJI.list.length} icons" aria-label="Search icons" value="${esc(state.emojiQ||'')}"></div>
+      <div class="egrid" id="emoji-grid">${emojiGrid()}</div>
+      ${f && f.emoji?`<button class="btn ghost" style="width:100%;justify-content:center;margin-top:var(--sp-3)" data-act="clear-emoji">Remove the icon</button>`:''}
+      <p class="note" style="margin-top:var(--sp-3)">Fluent Emoji by Microsoft, MIT licensed.</p>`;
+  } else if(state.panel==='account'){
     const signedIn = !!store.user;
     p.innerHTML = `<h4>${signedIn?'Signed in':'Sign in'}</h4>
       ${signedIn
@@ -1346,6 +1381,9 @@ document.addEventListener('click', e=>{
     case 'tab': go(a.dataset.v); break;
     case 'preview': state.panel=null; go('fill', state.formId); break;
     case 'exit-fill': go('build', state.formId); break;
+    case 'emoji': state.panel = state.panel==='emoji'?null:'emoji'; state.emojiQ=''; render(); break;
+    case 'pick-emoji': { f.emoji = a.dataset.p; state.panel=null; dirty(); render(); break; }
+    case 'clear-emoji': { f.emoji = ''; state.panel=null; dirty(); render(); break; }
     case 'account': state.panel = state.panel==='account'?null:'account'; render(); break;
     case 'google': {
       a.disabled = true;
@@ -1461,6 +1499,12 @@ document.addEventListener('input', e=>{
     return;
   }
   if(t.dataset.th && f){ f.theme[t.dataset.th] = t.value; store.saveForm(f); state.dirtyUntil = Date.now()+4000; return; }
+  if(t.id === 'emoji-q'){
+    state.emojiQ = t.value;
+    const g = document.getElementById('emoji-grid');
+    if(g) g.innerHTML = emojiGrid();
+    return;
+  }
   if(t.dataset.hf !== undefined && f){
     state.testHidden = state.testHidden || {};
     state.testHidden[t.dataset.hf] = t.value;

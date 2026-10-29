@@ -234,3 +234,17 @@ td.when{color:var(--muted);font-variant-numeric:tabular-nums}
 .q .ql-xl{font-size:var(--fs-display);line-height:var(--lh-display);font-weight:700;letter-spacing:-.025em;margin-bottom:var(--sp-5)}
 .runner{display:block;margin-top:var(--sp-7);color:var(--f-muted);font-size:var(--fs-caption);line-height:var(--lh-caption);text-decoration:underline;text-underline-offset:3px}
 .runner:hover{color:var(--f-accent-text)}
+
+/* the form's icon, and the grid it is chosen from */
+.formicon{display:flex;align-items:center;justify-content:center;width:60px;height:60px;border-radius:var(--r-lg);margin-bottom:var(--sp-2)}
+.formicon:hover{background:var(--f-soft)}
+.formicon img{width:48px;height:48px}
+.formicon .addicon{font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--f-muted)}
+.formicon-read{width:52px;height:52px;display:block;margin-bottom:var(--sp-3)}
+.canvasform[data-align="center"] .formicon,.canvasform[data-align="center"] .formicon-read{margin-left:auto;margin-right:auto}
+.cardicon{width:20px;height:20px;vertical-align:-4px;margin-right:var(--sp-1)}
+.crumbicon{width:18px;height:18px}
+.egrid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:var(--sp-1);max-height:264px;overflow:auto;padding-right:var(--sp-1)}
+.egrid button{display:grid;place-items:center;padding:var(--sp-1);border-radius:var(--r-sm)}
+.egrid button:hover{background:var(--sunk)}
+.egrid img{width:24px;height:24px}

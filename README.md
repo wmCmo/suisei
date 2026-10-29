@@ -77,6 +77,23 @@ the answer is substituted while the form is being filled: `Nice to meet you,
 first referenced, so renaming the question later does not break it. An `@word`
 that matches no question is left alone, which keeps email addresses intact.
 
+**Form icon** — each form can carry an icon, shown on its card, in the editor,
+and above the title of the form itself. The set is
+[Fluent Emoji](https://github.com/microsoft/fluentui-emoji) by Microsoft, MIT
+licensed, in the Flat style: SVGs of a few KB each, served from the repository
+through jsDelivr and pinned to a commit so a rename upstream cannot quietly
+break an icon someone picked.
+
+`src/emoji.json` lists the 183 icons the picker offers. It is generated, not
+written: Fluent Emoji's folder names do not always follow from the emoji's name,
+and the hand and body emoji carry an extra skin-tone level in their path, so
+every path is requested before it is included.
+
+```bash
+node scripts/emoji.mjs            # re-verify against the pinned commit
+node scripts/emoji.mjs --latest   # repin to current main, then re-verify
+```
+
 **Theme** — accent, typeface, alignment, light/dark/auto, corner style, runner,
 button label and thank-you message, per form, live in the editor.
 
@@ -185,6 +202,7 @@ payments, embedding in another page, email notifications.
 ```
 src/                 the source (see above)
 scripts/build.mjs    build + the token lint
+scripts/emoji.mjs    regenerates the verified icon list
 index.html           built; deploy this
 states.html          built; the component mirror
 ```
