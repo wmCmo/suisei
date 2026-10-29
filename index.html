@@ -115,10 +115,10 @@ svg{display:block}
 .empty strong{display:block;color:var(--fg);font-size:16px;margin-bottom:4px}
 
 /* ---------- form canvas (shared by builder + fill) ---------- */
-.canvasform{--f-bg:var(--surface);--f-fg:var(--fg);--f-line:var(--line);--f-soft:var(--sunk);--f-muted:var(--muted);--f-accent:#1f4d52;--f-r:9px;--f-font:var(--ui);
+.canvasform{--f-bg:var(--surface);--f-fg:var(--fg);--f-line:var(--line);--f-soft:var(--sunk);--f-muted:var(--muted);--f-wash:var(--soft);--f-accent:#1f4d52;--f-r:9px;--f-font:var(--ui);
   background:var(--f-bg);color:var(--f-fg);font-family:var(--f-font)}
-.canvasform[data-bg="light"]{--f-bg:#fbfaf8;--f-fg:#15181a;--f-line:#d8d4ce;--f-soft:#e2dfda;--f-muted:#5d6165}
-.canvasform[data-bg="dark"]{--f-bg:#171c20;--f-fg:#f2efea;--f-line:#2b343b;--f-soft:#12171b;--f-muted:#a9b2b8}
+.canvasform[data-bg="light"]{--f-bg:#fbfaf8;--f-fg:#15181a;--f-line:#d8d4ce;--f-soft:#e2dfda;--f-muted:#5d6165;--f-wash:#d8e3e2}
+.canvasform[data-bg="dark"]{--f-bg:#171c20;--f-fg:#f2efea;--f-line:#2b343b;--f-soft:#12171b;--f-muted:#a9b2b8;--f-wash:#24383c}
 .canvasform[data-align="center"] .col{text-align:center}
 .canvasform[data-align="center"] .opt{justify-content:center}
 .col{max-width:680px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:44px 64px}
@@ -129,7 +129,10 @@ svg{display:block}
 /* ---------- builder blocks ---------- */
 .blocks{margin-top:26px;display:flex;flex-direction:column}
 .blk{position:relative;padding:5px 0;border-radius:8px}
-.blk.sel{box-shadow:0 0 0 1px var(--f-accent)}
+/* Selection is a tint, not an outline — a box drawn in the accent reads as a
+   hard black rule at this weight. The spread bleeds it past the text column
+   without moving anything. */
+.blk.sel{background:var(--f-wash);box-shadow:0 0 0 7px var(--f-wash)}
 .blk.drop-before::before,.blk.drop-after::after{content:"";position:absolute;left:0;right:0;height:2px;background:var(--f-accent);border-radius:2px}
 .blk.drop-before::before{top:-1px}.blk.drop-after::after{bottom:-1px}
 .blk .gutter{position:absolute;left:-54px;top:7px;display:flex;gap:2px;opacity:0;transition:opacity .12s}
