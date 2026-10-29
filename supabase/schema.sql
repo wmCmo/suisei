@@ -47,6 +47,7 @@ drop policy if exists forms_update_owner  on public.forms;
 drop policy if exists forms_delete_owner  on public.forms;
 drop policy if exists subs_insert_any     on public.submissions;
 drop policy if exists subs_read_owner     on public.submissions;
+drop policy if exists subs_delete_owner   on public.submissions;
 
 -- a published form is public to read: that is how someone fills it. An
 -- unpublished one is visible to its owner alone, which also stops it
@@ -75,6 +76,12 @@ create policy subs_read_owner on public.submissions
     exists (select 1 from public.forms f where f.id = form_id and f.owner = auth.uid())
   );
 
+-- and only they may remove one
+create policy subs_delete_owner on public.submissions
+  for delete using (
+    exists (select 1 from public.forms f where f.id = form_id and f.owner = auth.uid())
+  );
+
 -- -------------------------------------------------------------------- grants
 -- With "Automatically expose new tables" off, the Data API roles have no
 -- privileges on these tables until they are granted. RLS still decides which
@@ -85,7 +92,7 @@ grant select                 on public.forms       to anon, authenticated;
 grant insert, update, delete on public.forms       to authenticated;
 
 grant insert                 on public.submissions to anon, authenticated;
-grant select                 on public.submissions to authenticated;
+grant select, delete         on public.submissions to authenticated;
 
 -- updated_at maintained server-side so a client cannot backdate a form
 create or replace function public.touch_updated_at() returns trigger

@@ -28,3 +28,18 @@ create policy forms_read_published_or_own on public.forms
 -- An answer may only be inserted against a form the inserting role can see,
 -- so this now also means: an unpublished form cannot collect answers. The
 -- policy text does not change; its meaning narrows with the one above.
+
+-- ---------------------------------------------------------------------------
+-- Deleting a response. There was no way to: insert and select were granted on
+-- submissions and delete was not, so a wrong answer could be collected and
+-- never removed, by anyone, including the person who owns the form.
+drop policy if exists subs_delete_owner on public.submissions;
+create policy subs_delete_owner on public.submissions
+  for delete using (
+    exists (select 1 from public.forms f where f.id = form_id and f.owner = auth.uid())
+  );
+
+grant delete on public.submissions to authenticated;
+
+-- A connectivity check against the live project left this row on a real form.
+delete from public.submissions where id = 'probe_after_policy';
