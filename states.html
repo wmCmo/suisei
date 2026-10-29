@@ -312,6 +312,17 @@ tbody tr:hover{background:var(--sunk)}
 td.when{color:var(--muted);font-variant-numeric:tabular-nums}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:70;background:var(--fg);color:var(--bg);padding:var(--sp-2) var(--sp-4);border-radius:var(--r-pill);font-size:var(--fs-label);line-height:var(--lh-label);box-shadow:var(--shadow)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* text blocks in the filled form, and the one-question runner */
+.ftitle-read{font-size:var(--fs-display);line-height:var(--lh-display);font-weight:700;letter-spacing:-.03em;margin:0 0 var(--sp-5)}
+.q-h1{font-size:var(--fs-h1);line-height:var(--lh-h1);letter-spacing:-.025em;margin:var(--sp-5) 0 var(--sp-2)}
+.q-h2{font-size:var(--fs-h2);line-height:var(--lh-h2);letter-spacing:-.02em;margin:var(--sp-4) 0 var(--sp-2)}
+.q-text{color:var(--f-muted);margin:0 0 var(--sp-4)}
+.counter{color:var(--f-muted);font-size:var(--fs-caption);line-height:var(--lh-caption);font-family:var(--mono)}
+.canvasform[data-runner="step"] .col{padding-block:var(--sp-8) var(--sp-7)}
+.q .ql-xl{font-size:var(--fs-display);line-height:var(--lh-display);font-weight:700;letter-spacing:-.025em;margin-bottom:var(--sp-5)}
+.runner{display:block;margin-top:var(--sp-7);color:var(--f-muted);font-size:var(--fs-caption);line-height:var(--lh-caption);text-decoration:underline;text-underline-offset:3px}
+.runner:hover{color:var(--f-accent-text)}
 </style>
 <style>
 /* This page is a mirror, not a component of its own: everything below is
@@ -409,7 +420,7 @@ function block(type, label, extra){
 }
 function newForm(title, blocks, logic){
   return {id:uid('f'), title:title||'Untitled form', blocks:blocks||[block('short_text','')], logic:logic||[], hidden:[],
-    theme:{accent:ACCENTS[0], font:'sans', align:'left', radius:10, bg:'auto', submit:'Submit', thanks:'Thanks for filling this out.'},
+    theme:{accent:ACCENTS[0], font:'sans', align:'left', radius:10, bg:'auto', runner:'grid', submit:'Submit', thanks:'Thanks for filling this out.'},
     createdAt:Date.now(), updatedAt:Date.now()};
 }
 const TEMPLATES = {
@@ -529,7 +540,7 @@ const store = {
 
 /* ============================ app state ============================ */
 const state = {view:'home', formId:null, sel:null, focus:null, menu:null, panel:null,
-  dirtyUntil:0, page:0, hist:[], answers:{}, bad:{}, done:false, rows:null, confirmDel:null,
+  dirtyUntil:0, page:0, step:0, hist:[], answers:{}, bad:{}, done:false, rows:null, confirmDel:null,
   hidden:{}, testHidden:{}};
 const form = () => store.forms[state.formId];
 const bar = document.getElementById('bar');
@@ -544,7 +555,7 @@ function go(view, id){
   if(id!==undefined && id!==state.formId) state.testHidden = {};
   state.view = view; if(id!==undefined) state.formId = id;
   state.sel = null; state.menu = null; state.panel = null; state.confirmDel = null;
-  if(view==='fill'){ state.page=0; state.hist=[]; state.answers={}; state.bad={}; state.done=false; }
+  if(view==='fill'){ state.page=0; state.step=0; state.hist=[]; state.answers={}; state.bad={}; state.done=false; }
   if(view==='responses'){ state.rows = null; store.watchSubs(state.formId, rows=>{ state.rows = rows; if(state.view==='responses') render(); }); }
   else store.stopWatch();
   if(view==='fill' && state.formId){
@@ -686,6 +697,79 @@ function pageOfBlock(f, id){
   return p;
 }
 function liveBlocks(pageBlocks, f){ return pageBlocks.filter(b=>visible(b,f,state.answers)); }
+
+/* ---------- answer piping ----------
+   A question gets a short, stable ref the first time it is referenced, so
+   renaming the question later does not break the reference. "@name" in any
+   later label is replaced by that answer while the form is being filled. */
+const slug = s => String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,24);
+function ensureRef(b, f){
+  if(b.ref) return b.ref;
+  const base = slug(b.label) || b.type.replace(/_/g,'');
+  const taken = new Set(f.blocks.filter(x=>x.ref).map(x=>x.ref));
+  let r = base, n = 2;
+  while(taken.has(r)) r = base + (n++);
+  b.ref = r;
+  return r;
+}
+function pipe(text, f){
+  if(!text || String(text).indexOf('@') < 0) return text || '';
+  return String(text).replace(/@([a-z0-9_]+)/gi, (whole, ref) => {
+    const b = (f.blocks||[]).find(x => x.ref === ref);
+    if(!b) return whole;                       // not a reference; leave it alone
+    const v = state.answers[b.id];
+    if(v===undefined || v===null || v==='' || (Array.isArray(v) && !v.length)) return '';
+    return cellText(b, {answers: state.answers});
+  }).replace(/[ 	]{2,}/g,' ').trim();
+}
+
+/* ---------- the one-question runner ----------
+   Both runners read the same block list. Layout blocks ride along with the
+   question that follows them, so a heading never gets a screen of its own. */
+function stepsOf(f){
+  const out = []; let lead = [];
+  f.blocks.forEach(b => {
+    if(b.type === 'page') return;
+    if(!visible(b, f, state.answers)) return;
+    if(isInput(b.type)){ out.push({lead, q:b}); lead = []; }
+    else lead.push(b);
+  });
+  if(lead.length) out.push({lead, q:null});
+  return out.length ? out : [{lead:[], q:null}];
+}
+function stepForPage(f, steps, page){
+  const i = steps.findIndex(s => s.q && pageOfBlock(f, s.q.id) === page);
+  return i < 0 ? steps.length - 1 : i;
+}
+function validateOne(b){
+  state.bad = {};
+  if(!b || !b.required) return true;
+  const v = state.answers[b.id];
+  const empty = v===undefined || v===null || v==='' || (Array.isArray(v) && !v.length);
+  if(empty) state.bad[b.id] = 'This question needs an answer.';
+  else if(b.type==='email' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) state.bad[b.id] = 'Check the email address.';
+  return !state.bad[b.id];
+}
+function advanceStep(){
+  const f = form(), steps = stepsOf(f);
+  const cur = steps[Math.min(state.step, steps.length-1)];
+  if(cur.q && !validateOne(cur.q)){ render(); return; }
+  const here = cur.q ? cur.q.id : null;
+  const r = rules(f).find(x => (x.do==='jump' || x.do==='submit')
+    && (x.when === here || String(x.when).startsWith(HIDDEN_PREFIX))
+    && truthy(x, f, state.answers));
+  if(r && r.do === 'submit'){ send(); return; }
+  // "jump to page 3" in this runner means its first question
+  let next = r ? stepForPage(f, steps, Number(r.page)||0) : state.step + 1;
+  if(r && next === state.step) next = state.step + 1;
+  if(next > steps.length - 1){ send(); return; }
+  state.hist.push(state.step); state.step = next;
+  window.scrollTo({top:0, behavior:'smooth'});
+  render();
+  const field = document.querySelector('.q input.fi, .q textarea.fi');
+  if(field) field.focus();
+}
+
 
 /* ============================ render: shell ============================ */
 function render(){
@@ -883,40 +967,64 @@ if(document.fonts && document.fonts.ready){
 /* ============================ render: fill ============================ */
 function renderFill(){
   const f = form();
-  const pages = pagesOf(f);
   const t = f.theme;
-  const shell = inner => `<div class="canvasform" data-bg="${t.bg}" data-align="${t.align}" style="${themeVars(f)};min-height:calc(100vh - 52px)">
-      ${pages.length>1 && !state.done?`<div class="progress"><i style="width:${Math.round((state.page)/pages.length*100)}%"></i></div>`:''}
+  const stepped = t.runner === 'step';
+  const pages = pagesOf(f);
+  const steps = stepped ? stepsOf(f) : null;
+  const total = stepped ? steps.length : pages.length;
+  const at = stepped ? state.step : state.page;
+  const toggle = `<button class="runner" data-act="runner">${stepped ? 'Show every question at once' : 'Answer one question at a time'}</button>`;
+  const shell = inner => `<div class="canvasform" data-bg="${t.bg}" data-align="${t.align}" data-runner="${stepped?'step':'grid'}" style="${themeVars(f)};min-height:calc(100vh - 52px)">
+      ${total>1 && !state.done?`<div class="progress"><i style="width:${Math.round(at/total*100)}%"></i></div>`:''}
       <div class="col">${inner}</div></div><div class="badge">Made with Suisei</div>`;
   if(state.done){
-    return shell(`<div class="done"><div class="tick">${I.tick}</div><h2>${esc(t.thanks)}</h2>
+    return shell(`<div class="done"><div class="tick">${I.tick}</div><h2>${esc(pipe(t.thanks, f))}</h2>
       <p>Your response has been recorded.</p>
       <button class="btn ghost" data-act="again">Submit another response</button></div>`);
   }
-  const first = state.page===0;
-  const last = state.page===pages.length-1;
-  const qs = liveBlocks(pages[state.page], f).map(b=>renderQ(b)).join('');
   const hv = Object.keys(state.hidden||{});
   const peek = ((store.editor || !store.db) && hv.length)
     ? `<div class="hfrow" style="margin:0 0 22px;padding:0;border:0">${hv.map(k=>`<code>@${esc(k)} = ${esc(state.hidden[k])}</code>`).join('')}<span class="lg">editors only</span></div>` : '';
+  const title = `<h1 class="ftitle-read">${esc(f.title)}</h1>`;
+
+  if(stepped){
+    const cur = steps[Math.min(state.step, steps.length-1)];
+    const last = state.step >= steps.length-1;
+    return shell(`
+      ${state.step===0?title:''}
+      ${state.step===0?peek:''}
+      ${cur.lead.map(b=>renderQ(b)).join('')}
+      ${cur.q?renderQ(cur.q, true):''}
+      <div class="nav">
+        ${state.hist.length?`<button class="back" data-act="prev">${I.back} Back</button>`:''}
+        <button class="submit" data-act="next">${last?esc(t.submit):'OK'} ${I.arrow}</button>
+        <span class="counter">${state.step+1} / ${steps.length}</span>
+      </div>
+      ${toggle}`);
+  }
+
+  const first = state.page===0;
+  const last = state.page===pages.length-1;
   return shell(`
-    ${first?`<h1 style="font-size:var(--fs-display);line-height:var(--lh-display);font-weight:700;letter-spacing:-.03em;margin-bottom:26px">${esc(f.title)}</h1>`:''}
+    ${first?title:''}
     ${peek}
-    ${qs}
+    ${liveBlocks(pages[state.page], f).map(b=>renderQ(b)).join('')}
     <div class="nav">
       ${(!first||state.hist.length)?`<button class="back" data-act="prev">${I.back} Back</button>`:''}
       <button class="submit" data-act="${last?'send':'next'}">${last?esc(t.submit):'Next'} ${I.arrow}</button>
-      ${pages.length>1?`<span style="color:var(--f-muted);font-size:var(--fs-caption);line-height:var(--lh-caption);font-family:var(--mono)">${state.page+1} / ${pages.length}</span>`:''}
-    </div>`);
+      ${pages.length>1?`<span class="counter">${state.page+1} / ${pages.length}</span>`:''}
+    </div>
+    ${toggle}`);
 }
-function renderQ(b){
+function renderQ(b, big){
+  const f = form();
   const v = state.answers[b.id];
-  if(b.type==='h1') return `<h2 style="font-size:var(--fs-h1);line-height:var(--lh-h1);letter-spacing:-.025em;margin:26px 0 10px">${esc(b.label)}</h2>`;
-  if(b.type==='h2') return `<h3 style="font-size:var(--fs-h2);line-height:var(--lh-h2);letter-spacing:-.02em;margin:22px 0 8px">${esc(b.label)}</h3>`;
-  if(b.type==='text') return `<p style="color:var(--f-muted);margin:0 0 20px">${esc(b.label)}</p>`;
+  if(b.type==='h1') return `<h2 class="q-h1">${esc(pipe(b.label,f))}</h2>`;
+  if(b.type==='h2') return `<h3 class="q-h2">${esc(pipe(b.label,f))}</h3>`;
+  if(b.type==='text') return `<p class="q-text">${esc(pipe(b.label,f))}</p>`;
   if(b.type==='divider') return `<div class="rule"></div>`;
   const bad = state.bad[b.id];
-  const head = `<div class="ql">${esc(b.label||'Untitled question')}${b.required?'<span class="req">*</span>':''}</div>`;
+  const head = `<div class="ql${big?' ql-xl':''}">${esc(pipe(b.label,f)||'Untitled question')}${b.required?'<span class="req">*</span>':''}</div>`;
   let ctl = '';
   if(b.type==='long_text') ctl = `<textarea class="fi" rows="3" data-a="${b.id}" placeholder="${esc(b.placeholder)}">${esc(v||'')}</textarea>`;
   else if(b.type==='choice'||b.type==='checkboxes'){
@@ -1019,6 +1127,7 @@ function renderPanel(){
       <div class="fld"><label>Accent</label><div class="swatches">${ACCENTS.map(c=>`<button style="background:${c}" data-act="th" data-k="accent" data-v="${c}" aria-pressed="${t.accent===c}" aria-label="${c}"></button>`).join('')}</div></div>
       <div class="fld"><label>Typeface</label><div class="chips">${['sans','serif','mono'].map(k=>`<button data-act="th" data-k="font" data-v="${k}" aria-pressed="${t.font===k}" style="font-family:${FONTS[k]}">${FONT_NAMES[k]}</button>`).join('')}</div></div>
       <div class="fld"><label>Alignment</label><div class="chips">${['left','center'].map(k=>`<button data-act="th" data-k="align" data-v="${k}" aria-pressed="${t.align===k}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div></div>
+      <div class="fld"><label>Runner</label><div class="chips">${[['grid','All at once'],['step','One at a time']].map(([k,n])=>`<button data-act="th" data-k="runner" data-v="${k}" aria-pressed="${(t.runner||'grid')===k}">${n}</button>`).join('')}</div></div>
       <div class="fld"><label>Background</label><div class="chips">${['auto','light','dark'].map(k=>`<button data-act="th" data-k="bg" data-v="${k}" aria-pressed="${t.bg===k}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div></div>
       <div class="fld"><label>Corners</label><div class="chips">${[[2,'Sharp'],[10,'Soft'],[16,'Round']].map(([v,n])=>`<button data-act="th" data-k="radius" data-v="${v}" aria-pressed="${t.radius==v}">${n}</button>`).join('')}</div></div>
       <div class="fld"><label>Submit button</label><input type="text" value="${esc(t.submit)}" data-th="submit"></div>
@@ -1056,8 +1165,19 @@ function openMenu(kind, opts){
 }
 function closeMenu(){ state.menu = null; layer.querySelectorAll('.menu').forEach(n=>n.remove()); }
 function menuItems(){
-  const q = (state.menu.q||'').toLowerCase();
-  return Object.keys(TYPES).filter(k=>!q || TYPES[k].n.toLowerCase().includes(q) || k.includes(q));
+  const m = state.menu || {};
+  const q = (m.q||'').toLowerCase();
+  if(m.kind === 'pipe'){
+    const f = form();
+    const upto = f.blocks.findIndex(x => x.id === m.blockId);
+    return f.blocks.slice(0, upto < 0 ? f.blocks.length : upto)
+      .filter(x => isInput(x.type))
+      .filter(x => !q || (x.label||'').toLowerCase().includes(q))
+      .map(x => ({k:x.id, n:x.label || TYPES[x.type].n, ic:TYPES[x.type].i, grp:'Earlier answers'}));
+  }
+  return Object.keys(TYPES)
+    .filter(k => !q || TYPES[k].n.toLowerCase().includes(q) || k.includes(q))
+    .map(k => ({k, n:TYPES[k].n, ic:TYPES[k].i, grp:TYPES[k].g}));
 }
 function drawMenu(){
   layer.querySelectorAll('.menu').forEach(n=>n.remove());
@@ -1068,13 +1188,13 @@ function drawMenu(){
   el.className = 'menu canvasform';
   const mf = form();
   if(mf){ el.setAttribute('data-bg', mf.theme.bg); el.setAttribute('style', themeVars(mf)); }
-  let html = m.kind==='type' ? '' : `<input class="q" placeholder="Search blocks…" value="${esc(m.q)}" aria-label="Search blocks">`;
+  let html = m.kind==='type' ? '' : `<input class="q" placeholder="${m.kind==='pipe'?'Search questions…':'Search blocks…'}" value="${esc(m.q)}" aria-label="Search blocks">`;
   let grp = '';
-  items.forEach((k,i)=>{
-    if(TYPES[k].g!==grp){ grp = TYPES[k].g; html += `<div class="grp">${grp}</div>`; }
-    html += `<button class="it" data-act="pick-type" data-k="${k}" aria-selected="${i===m.idx}"><span class="ic">${I[TYPES[k].i]}</span>${TYPES[k].n}</button>`;
+  items.forEach((it,i)=>{
+    if(it.grp!==grp){ grp = it.grp; html += `<div class="grp">${grp}</div>`; }
+    html += `<button class="it" data-act="pick-type" data-k="${it.k}" aria-selected="${i===m.idx}"><span class="ic">${I[it.ic]}</span>${esc(it.n)}</button>`;
   });
-  if(!items.length) html = (m.kind==='type'?'':html) + `<div class="none">No block matches “${esc(m.q)}”</div>`;
+  if(!items.length) html = (m.kind==='type'?'':html) + `<div class="none">${m.kind==='pipe'?'No earlier question to reference':'No block matches “'+esc(m.q)+'”'}</div>`;
   el.innerHTML = html;
   layer.appendChild(el);
   const r = m.rect;
@@ -1084,9 +1204,23 @@ function drawMenu(){
   if(m.kind!=='type'){ const q = el.querySelector('.q'); if(q){ q.focus(); q.setSelectionRange(q.value.length,q.value.length); } }
   const on = el.querySelector('[aria-selected="true"]'); if(on) on.scrollIntoView({block:'nearest'});
 }
+function applyPipe(srcId){
+  const f = form(), m = state.menu;
+  const src = f.blocks.find(x => x.id === srcId);
+  const tgt = f.blocks.find(x => x.id === m.blockId);
+  closeMenu();
+  if(!src || !tgt) return;
+  const ref = ensureRef(src, f);
+  const cut = tgt.label.lastIndexOf('@');
+  tgt.label = (cut < 0 ? tgt.label : tgt.label.slice(0, cut)) + '@' + ref + ' ';
+  store.saveForm(f); state.dirtyUntil = Date.now() + 4000;
+  state.sel = tgt.id; state.focus = {id:tgt.id, field:'label'};
+  render();
+}
 function applyType(k){
   const f = form();
   const m = state.menu;
+  if(m.kind === 'pipe'){ applyPipe(k); return; }
   closeMenu();
   if(m.kind==='type' || m.slash){
     const b = f.blocks.find(x=>x.id===m.blockId);
@@ -1202,15 +1336,21 @@ document.addEventListener('click', e=>{
       delete state.bad[b.id]; render(); break;
     }
     case 'rate': { state.answers[a.dataset.id] = Number(a.dataset.v); delete state.bad[a.dataset.id]; render(); break; }
-    case 'next': if(validate()) advance(); else render(); break;
-    case 'prev': state.page = state.hist.length ? state.hist.pop() : Math.max(0, state.page-1); render(); break;
+    case 'next': if(f.theme.runner==='step'){ advanceStep(); } else if(validate()) advance(); else render(); break;
+    case 'prev': {
+      const back = state.hist.length ? state.hist.pop() : null;
+      if(f.theme.runner==='step') state.step = back===null ? Math.max(0,state.step-1) : back;
+      else state.page = back===null ? Math.max(0,state.page-1) : back;
+      state.bad={}; render(); break;
+    }
     case 'send': {
       if(!validate()){ render(); break; }
       const j = jumpFrom(pagesOf(f)[state.page], f, state.answers);
       if(j && j.do==='jump' && Number(j.page)!==state.page) advance(); else send();
       break;
     }
-    case 'again': state.page=0; state.hist=[]; state.answers={}; state.bad={}; state.done=false; render(); break;
+    case 'again': state.page=0; state.step=0; state.hist=[]; state.answers={}; state.bad={}; state.done=false; render(); break;
+    case 'runner': { f.theme.runner = f.theme.runner==='step'?'grid':'step'; state.page=0; state.step=0; state.hist=[]; state.bad={}; dirty(); render(); break; }
     /* responses */
     case 'copy-csv': copy(csv()); break;
     case 'dl-csv': dlCsv(); break;
@@ -1260,6 +1400,15 @@ document.addEventListener('input', e=>{
       if(t.value==='/' && !state.menu){ openMenu('slash', {at:f.blocks.indexOf(b)+1, blockId:b.id, slash:true, rect:t.getBoundingClientRect()}); }
       else if(state.menu && state.menu.slash && state.menu.blockId===b.id){
         if(t.value[0] !== '/'){ closeMenu(); } else { state.menu.q = t.value.slice(1); state.menu.idx = 0; drawMenu(); }
+      }
+      else {
+        const upto = t.value.slice(0, t.selectionStart == null ? t.value.length : t.selectionStart);
+        if(!state.menu && /(^|\s)@$/.test(upto)){
+          openMenu('pipe', {blockId:b.id, rect:t.getBoundingClientRect()});
+        } else if(state.menu && state.menu.kind === 'pipe'){
+          const m2 = /(?:^|\s)@([^\s]*)$/.exec(upto);
+          if(!m2) closeMenu(); else { state.menu.q = m2[1]; state.menu.idx = 0; drawMenu(); }
+        }
       }
       b.label = t.value; fit(t);
     }
@@ -1352,11 +1501,25 @@ document.addEventListener('keydown', e=>{
   }
   if(state.view==='fill' && f && !state.done){
     const tag = (e.target.tagName||'').toLowerCase();
+    // Enter is how you answer a one-question runner, so it has to work from
+    // inside the field. A textarea keeps it for newlines.
+    if(e.key==='Enter' && !e.shiftKey && tag!=='textarea' && tag!=='button'){
+      e.preventDefault();
+      if(f.theme.runner==='step'){ advanceStep(); return; }
+      const pg = pagesOf(f);
+      if(!validate()){ render(); return; }
+      if(state.page===pg.length-1){
+        const j = jumpFrom(pg[state.page], f, state.answers);
+        if(j && j.do==='jump' && Number(j.page)!==state.page) advance(); else send();
+      } else advance();
+      return;
+    }
     if(tag==='input'||tag==='textarea'||tag==='select') return;
-    if(e.key==='Enter' && tag==='button') return;
     const k = e.key.toUpperCase();
     if(KEYS.includes(k) && k.length===1){
-      const page = liveBlocks(pagesOf(f)[state.page], f);
+      const page = f.theme.runner==='step'
+        ? (function(){ const st = stepsOf(f)[state.step]; return st && st.q ? [st.q] : []; })()
+        : liveBlocks(pagesOf(f)[state.page], f);
       const q = page.find(b=>b.type==='choice'||b.type==='checkboxes');
       if(q){ const idx = KEYS.indexOf(k); const o = q.options[idx];
         if(o){ e.preventDefault();
@@ -1364,12 +1527,7 @@ document.addEventListener('keydown', e=>{
           else state.answers[q.id] = o.id;
           delete state.bad[q.id]; render(); } }
     }
-    if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); const pages = pagesOf(f);
-      if(!validate()){ render(); return; }
-      if(state.page===pages.length-1){
-        const j = jumpFrom(pages[state.page], f, state.answers);
-        if(j && j.do==='jump' && Number(j.page)!==state.page) advance(); else send();
-      } else advance(); }
+
   }
 });
 
@@ -1420,7 +1578,9 @@ function advance(){
   render();
 }
 function validate(){
-  const f = form(); const page = liveBlocks(pagesOf(f)[state.page], f);
+  const f = form(); const page = f.theme.runner==='step'
+        ? (function(){ const st = stepsOf(f)[state.step]; return st && st.q ? [st.q] : []; })()
+        : liveBlocks(pagesOf(f)[state.page], f);
   state.bad = {};
   page.forEach(b=>{
     if(!isInput(b.type) || !b.required) return;
@@ -1457,7 +1617,7 @@ function fromHash(){
   if(token.startsWith('form-')){
     const id = token.slice(5);
     if(store.forms[id]){
-      state.formId = id; state.view='fill'; state.page=0; state.hist=[];
+      state.formId = id; state.view='fill'; state.page=0; state.step=0; state.hist=[];
       state.answers={}; state.bad={}; state.done=false;
       state.hidden = hiddenValues(store.forms[id]);
       return true;

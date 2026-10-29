@@ -65,8 +65,20 @@ https://you.github.io/suisei/?form=fdemo1&source=newsletter&plan=pro
 the artifact sandbox strips query strings before the page sees them. Both forms
 are understood, so links keep working either way.)
 
-**Theme** — accent, typeface, alignment, light/dark/auto, corner style, button
-label and thank-you message, per form, live in the editor.
+**Two runners, one block list** — a form renders either all at once or one
+question at a time, and the respondent can switch mid-form without losing an
+answer, because answers are keyed by block rather than by screen. A jump rule
+that says "go to page 3" means its first question in the one-at-a-time runner.
+Enter answers and advances; a textarea keeps Enter for newlines.
+
+**Answer piping** — type `@` in any label to reference an earlier question, and
+the answer is substituted while the form is being filled: `Nice to meet you,
+@your_name`. The reference is a short stable key assigned when the question is
+first referenced, so renaming the question later does not break it. An `@word`
+that matches no question is left alone, which keeps email addresses intact.
+
+**Theme** — accent, typeface, alignment, light/dark/auto, corner style, runner,
+button label and thank-you message, per form, live in the editor.
 
 **Responses** — count, latest, average completion, per-question breakdown bars,
 the full table, Copy CSV.
@@ -145,9 +157,8 @@ folder in. The only network requests the page makes are to Google Fonts.
 
 ## Not built
 
-Calculated fields, answer piping (`@question` inside a later question), real file
-storage (the file block records the filename only), payments, embedding in another
-page, email notifications.
+Calculated fields, real file storage (the file block records the filename only),
+payments, embedding in another page, email notifications.
 
 ## Files
 

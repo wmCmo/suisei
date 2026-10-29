@@ -223,3 +223,14 @@ tbody tr:hover{background:var(--sunk)}
 td.when{color:var(--muted);font-variant-numeric:tabular-nums}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:70;background:var(--fg);color:var(--bg);padding:var(--sp-2) var(--sp-4);border-radius:var(--r-pill);font-size:var(--fs-label);line-height:var(--lh-label);box-shadow:var(--shadow)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* text blocks in the filled form, and the one-question runner */
+.ftitle-read{font-size:var(--fs-display);line-height:var(--lh-display);font-weight:700;letter-spacing:-.03em;margin:0 0 var(--sp-5)}
+.q-h1{font-size:var(--fs-h1);line-height:var(--lh-h1);letter-spacing:-.025em;margin:var(--sp-5) 0 var(--sp-2)}
+.q-h2{font-size:var(--fs-h2);line-height:var(--lh-h2);letter-spacing:-.02em;margin:var(--sp-4) 0 var(--sp-2)}
+.q-text{color:var(--f-muted);margin:0 0 var(--sp-4)}
+.counter{color:var(--f-muted);font-size:var(--fs-caption);line-height:var(--lh-caption);font-family:var(--mono)}
+.canvasform[data-runner="step"] .col{padding-block:var(--sp-8) var(--sp-7)}
+.q .ql-xl{font-size:var(--fs-display);line-height:var(--lh-display);font-weight:700;letter-spacing:-.025em;margin-bottom:var(--sp-5)}
+.runner{display:block;margin-top:var(--sp-7);color:var(--f-muted);font-size:var(--fs-caption);line-height:var(--lh-caption);text-decoration:underline;text-underline-offset:3px}
+.runner:hover{color:var(--f-accent-text)}
