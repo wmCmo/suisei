@@ -1,0 +1,1826 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Write a form the way you write a document. Blocks, conditional logic, hidden fields, responses.">
+<title>Suisei 水星</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Old+Mincho:wght@400;700&display=swap">
+<style>
+/* Decisions only. Every rule in this file declares custom properties and
+   nothing else -- that is the test for whether a line belongs here. If a
+   designer would change it, it is a token; if it describes how a widget is
+   wired, it goes in app.css. The build refuses to ship a colour literal or
+   a raw spacing value found outside this file. */
+/* base:end */
+
+/* Layout: a fixed 52px command bar over a single scrolling stage; the stage is
+   either a card grid (home), a 680px writing column (build / fill), or a full
+   width data surface (responses). Form canvases carry their own token set.
+
+   Colour is Suisei's: mercury teal against warm stone, solar for anything
+   live or unsaved. Surfaces are flat and edges are real — a control is
+   defined by its hairline, never by a shadow pretending to be depth. */
+:root{
+  /* Daylight */
+  --bg:#eae8e4; --surface:#fbfaf8; --sunk:#e2dfda;
+  --line:#d8d4ce; --line-2:#b9b4ac; --line-strong:#86837d;
+  --fg:#15181a; --muted:#5d6165; --faint:#7a7d81;
+  --accent:#1f4d52; --accent-fg:#fbfaf8; --soft:#d8e3e2;
+  --ok:#1f4d52; --warn:#a85b14; --warn-soft:#f0e4d2; --danger:#a33224;
+  --ui:'Zen Kaku Gothic New','Hiragino Sans','Yu Gothic UI',system-ui,sans-serif;
+  --serif:'Zen Old Mincho','Hiragino Mincho ProN','Yu Mincho',Georgia,serif;
+  --mono:ui-monospace,'Cascadia Mono','SFMono-Regular',Menlo,monospace;
+  --r-sm:6px; --r:9px; --r-lg:14px; --r-pill:999px;
+  --on-accent:#fbfaf8; --scrim:rgba(21,24,26,.34); --shadow-sm:0 1px 2px rgba(21,24,26,.08);
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px; --sp-7:48px; --sp-8:64px;
+  --shadow:0 1px 2px rgba(21,24,26,.07),0 10px 26px -14px rgba(21,24,26,.26);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  /* Nightside */
+  --bg:#171c20; --surface:#202830; --sunk:#12171b;
+  --line:#2b343b; --line-2:#44505a; --line-strong:#64717a;
+  --fg:#f2efea; --muted:#a9b2b8; --faint:#6c767c;
+  --accent:#7fc3bd; --accent-fg:#0f1a1c; --soft:#24383c;
+  --ok:#7fc3bd; --warn:#f0a35c; --warn-soft:#3a2a16; --danger:#f09287; --on-accent:#fbfaf8; --scrim:rgba(0,0,0,.5); --shadow-sm:0 1px 2px rgba(0,0,0,.35);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 30px -16px rgba(0,0,0,.75);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#171c20; --surface:#202830; --sunk:#12171b;
+  --line:#2b343b; --line-2:#44505a; --line-strong:#64717a;
+  --fg:#f2efea; --muted:#a9b2b8; --faint:#6c767c;
+  --accent:#7fc3bd; --accent-fg:#0f1a1c; --soft:#24383c;
+  --ok:#7fc3bd; --warn:#f0a35c; --warn-soft:#3a2a16; --danger:#f09287; --on-accent:#fbfaf8; --scrim:rgba(0,0,0,.5); --shadow-sm:0 1px 2px rgba(0,0,0,.35);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 30px -16px rgba(0,0,0,.75);
+  color-scheme:dark;
+}
+/* A forced sheet also forces the UA's own widgets — scrollbars, selects,
+   date pickers — so they don't arrive in the opposite theme. */
+.canvasform[data-bg="light"]{--f-bg:#fbfaf8;--f-fg:#15181a;--f-line:#d8d4ce;--f-soft:#e2dfda;--f-muted:#5d6165;--f-wash:#d8e3e2;color-scheme:light}
+.canvasform[data-bg="dark"]{--f-bg:#171c20;--f-fg:#f2efea;--f-line:#2b343b;--f-soft:#12171b;--f-muted:#a9b2b8;--f-wash:#24383c;color-scheme:dark}
+/* The accent is picked by whoever built the form, so it can be a deep colour
+   that disappears as text on a dark sheet. Fills keep the chosen colour;
+   text and small marks take a lifted version of it. */
+.canvasform[data-bg="dark"],
+:root[data-theme="dark"] .canvasform[data-bg="auto"]{--f-accent-text:color-mix(in srgb,var(--f-accent) 48%,#f2efea)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .canvasform[data-bg="auto"]{--f-accent-text:color-mix(in srgb,var(--f-accent) 48%,#f2efea)}}
+
+/* The form sheet carries its own set, so a form can be themed
+   independently of the app around it. */
+.canvasform{--f-bg:var(--surface);--f-fg:var(--fg);--f-line:var(--line);--f-soft:var(--sunk);--f-muted:var(--muted);--f-wash:var(--soft);--f-accent:#1f4d52;--f-accent-text:var(--f-accent);--f-r:9px;--f-font:var(--ui)}
+
+/* Type. Nine steps, each carrying its own line-height, replacing the
+   twenty sizes that were picked one rule at a time. Sizes only -- the
+   family stays separate so a form can set its own. */
+:root{
+  --fs-display: 30px;  --lh-display: 38px;
+  --fs-h1:      25px;  --lh-h1:      32px;
+  --fs-h2:      19px;  --lh-h2:      26px;
+  --fs-figure:  24px;  --lh-figure:  28px;
+  --fs-ask:     16px;  --lh-ask:     24px;
+  --fs-body:    15px;  --lh-body:    22px;
+  --fs-label:   13px;  --lh-label:   18px;
+  --fs-caption: 12px;  --lh-caption: 16px;
+  --fs-micro:   11px;  --lh-micro:   16px;
+}
+</style>
+<style>
+/* base:start — supplied by the artifact host; scripts/for-artifact.mjs strips it */
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+img{max-width:100%}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--ui);font-size:var(--fs-body);line-height:var(--lh-body);line-height:1.5;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--surface);z-index:40}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,textarea,select{font:inherit;color:inherit}
+h1,h2,h3{margin:0;text-wrap:balance}
+svg{display:block}
+::selection{background:var(--soft)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--r-sm)}
+
+/* ---------- command bar ---------- */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;display:flex;align-items:center;gap:var(--sp-2);height:52px;
+  background:var(--surface);border-bottom:1px solid var(--line);
+  padding-left:max(var(--sp-3),env(safe-area-inset-left,0px));padding-right:max(var(--sp-3),env(safe-area-inset-right,0px))}
+.mark{display:flex;align-items:center;gap:var(--sp-2);font-weight:700;letter-spacing:-.02em}
+.mark i{display:grid;place-items:center;width:22px;height:22px;border-radius:var(--r-sm);background:var(--accent);color:var(--accent-fg);font-style:normal;font-size:var(--fs-label);line-height:var(--lh-label);font-weight:700}
+.crumb{display:flex;align-items:center;gap:var(--sp-2);min-width:0;flex:1}
+.crumb .sep{color:var(--faint)}
+.crumb input{min-width:0;flex:1;max-width:320px;background:none;border:1px solid transparent;border-radius:var(--r-sm);padding:var(--sp-1) var(--sp-2);font-weight:500}
+.crumb input:hover{border-color:var(--line)}
+.crumb input:focus{border-color:var(--accent);outline:none}
+.seg{display:flex;gap:2px;background:var(--sunk);border-radius:var(--r);padding:var(--sp-1)}
+.seg button{padding:var(--sp-1) var(--sp-3);border-radius:var(--r-sm);font-size:var(--fs-label);line-height:var(--lh-label);font-weight:500;color:var(--muted)}
+.seg button[aria-selected="true"]{background:var(--surface);color:var(--fg);box-shadow:var(--shadow-sm)}
+.tools{display:flex;align-items:center;gap:var(--sp-1)}
+.btn{display:inline-flex;align-items:center;gap:var(--sp-1);padding:var(--sp-1) var(--sp-3);border-radius:var(--r);font-size:var(--fs-label);line-height:var(--lh-label);font-weight:500;color:var(--muted);white-space:nowrap}
+.btn:hover{background:var(--sunk);color:var(--fg)}
+.btn.primary{background:var(--accent);color:var(--accent-fg)}
+.btn.primary:hover{background:var(--accent);filter:brightness(1.08)}
+.btn.ghost{border:1px solid var(--line);color:var(--fg)}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.pill{font-weight:500;font-size:var(--fs-micro);line-height:var(--lh-micro);padding:2px var(--sp-2);border-radius:var(--r-pill);background:var(--sunk);color:var(--muted)}
+.pill.live{background:var(--soft);color:var(--accent)}
+@media(max-width:720px){.hide-sm{display:none}}
+
+/* ---------- stage ---------- */
+.stage{padding-bottom:var(--sp-8)}
+.wrap{max-width:1100px;margin:0 auto;padding-left:max(var(--sp-4),env(safe-area-inset-left,0px));padding-right:max(var(--sp-4),env(safe-area-inset-right,0px));padding-block:var(--sp-5)}
+.lede{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--sp-4);flex-wrap:wrap;margin-bottom:var(--sp-4)}
+.lede h1{font-size:var(--fs-h1);line-height:var(--lh-h1);letter-spacing:-.025em}
+.lede p{margin:var(--sp-1) 0 0;color:var(--muted);font-size:var(--fs-body);line-height:var(--lh-body)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(236px,1fr));gap:var(--sp-3)}
+.card{min-width:0;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:var(--sp-4) var(--sp-4) var(--sp-3);display:flex;flex-direction:column;gap:var(--sp-2);transition:border-color .15s,transform .15s}
+.card:hover{border-color:var(--line-2);transform:translateY(-1px)}
+.card h3{font-size:var(--fs-body);line-height:var(--lh-body);font-weight:600;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .meta{display:flex;align-items:center;gap:var(--sp-2);font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--muted);font-variant-numeric:tabular-nums}
+.card .strip{height:4px;border-radius:var(--r-pill);background:var(--sunk);overflow:hidden}
+.card .strip i{display:block;height:100%;background:var(--accent)}
+.card .row{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2)}
+.card .x{opacity:0;padding:2px var(--sp-1);border-radius:var(--r-sm);font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--muted)}
+.card:hover .x{opacity:1}
+.card .x:hover{background:var(--sunk);color:var(--warn)}
+.new{border:1px dashed var(--line-2);background:none;align-items:flex-start;justify-content:center;color:var(--muted);min-height:116px}
+.new:hover{border-color:var(--accent);color:var(--accent)}
+.tpl{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin-top:var(--sp-2)}
+.tpl button{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3);border:1px solid var(--line);border-radius:var(--r-pill);font-size:var(--fs-label);line-height:var(--lh-label);background:var(--surface)}
+.tpl button:hover{border-color:var(--accent);color:var(--accent)}
+.empty{border:1px dashed var(--line-2);border-radius:var(--r-lg);padding:var(--sp-6) var(--sp-5);text-align:center;color:var(--muted)}
+.empty strong{display:block;color:var(--fg);font-size:var(--fs-ask);line-height:var(--lh-ask);margin-bottom:var(--sp-1)}
+
+/* ---------- form canvas (shared by builder + fill) ---------- */
+.canvasform{background:var(--f-bg);color:var(--f-fg);font-family:var(--f-font)}
+.canvasform[data-align="center"] .col{text-align:center}
+.canvasform[data-align="center"] .opt{justify-content:center}
+.col{max-width:680px;margin:0 auto;padding-left:max(var(--sp-4),env(safe-area-inset-left,0px));padding-right:max(var(--sp-4),env(safe-area-inset-right,0px));padding-block:var(--sp-7) var(--sp-8)}
+.ftitle{font-size:var(--fs-display);line-height:var(--lh-display);font-weight:700;letter-spacing:-.03em;width:100%;background:none;border:0;resize:none;font-family:inherit;color:inherit;padding:0;overflow:hidden}
+.ftitle::placeholder{color:var(--f-muted);opacity:.5}
+.ftitle:focus{outline:none}
+
+/* ---------- builder blocks ---------- */
+.blocks{margin-top:var(--sp-5);display:flex;flex-direction:column}
+.blk{position:relative;padding:var(--sp-1) 0;border-radius:var(--r)}
+/* Selection is a tint, not an outline — a box drawn in the accent reads as a
+   hard black rule at this weight. The spread bleeds it past the text column
+   without moving anything. */
+.blk.sel{background:var(--f-wash);box-shadow:0 0 0 7px var(--f-wash)}
+.blk.drop-before::before,.blk.drop-after::after{content:"";position:absolute;left:0;right:0;height:2px;background:var(--f-accent);border-radius:2px}
+.blk.drop-before::before{top:-1px}.blk.drop-after::after{bottom:-1px}
+.blk .gutter{position:absolute;left:-54px;top:7px;display:flex;gap:2px;opacity:0;transition:opacity .12s}
+.blk:hover .gutter,.blk.sel .gutter{opacity:1}
+.gutter button{width:22px;height:22px;display:grid;place-items:center;border-radius:var(--r-sm);color:var(--f-muted)}
+.gutter button:hover{background:var(--f-soft);color:var(--f-fg)}
+@media(max-width:820px){.blk .gutter{position:static;opacity:1;margin-bottom:2px}}
+.lbl{width:100%;background:none;border:0;resize:none;overflow:hidden;font-family:inherit;color:inherit;padding:0;font-size:var(--fs-ask);line-height:var(--lh-ask);font-weight:600;letter-spacing:-.012em}
+.lbl:focus{outline:none}
+.lbl::placeholder{color:var(--f-muted);opacity:.52;font-weight:500}
+.blk[data-type="h1"] .lbl{font-size:var(--fs-h1);line-height:var(--lh-h1);font-weight:700;letter-spacing:-.025em}
+.blk[data-type="h2"] .lbl{font-size:var(--fs-h2);line-height:var(--lh-h2);font-weight:700;letter-spacing:-.02em}
+.blk[data-type="text"] .lbl{font-size:var(--fs-body);line-height:var(--lh-body);font-weight:400;color:var(--f-muted)}
+.req{color:var(--danger);font-weight:600;margin-left:var(--sp-1)}
+.field{margin-top:var(--sp-2)}
+.fi{width:100%;background:var(--f-bg);border:1px solid var(--f-line);border-radius:var(--f-r);padding:var(--sp-2) var(--sp-3);font-size:var(--fs-body);line-height:var(--lh-body);font-family:inherit;color:inherit}
+.fi::placeholder{color:var(--f-muted);opacity:.72}
+.fi:focus{outline:none;border-color:var(--f-accent-text);box-shadow:0 0 0 3px var(--f-wash)}
+textarea.fi{resize:vertical;min-height:76px;line-height:1.5}
+select.fi{height:40px;padding-right:var(--sp-2)}
+.opts{display:flex;flex-direction:column;gap:var(--sp-1)}
+.opt{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3);border:1px solid var(--f-line);border-radius:var(--f-r);background:var(--f-bg);min-width:0}
+.opt .mk{flex:none;width:17px;height:17px;border:1.5px solid var(--f-line);border-radius:50%;display:grid;place-items:center}
+.opt.sq .mk{border-radius:var(--r-sm)}
+.opt input{flex:1;min-width:0;background:none;border:0;padding:0;font-family:inherit;font-size:var(--fs-body);line-height:var(--lh-body)}
+.opt input:focus{outline:none}
+.opt .k{font-family:var(--mono);font-size:var(--fs-micro);line-height:var(--lh-micro);color:var(--f-muted);border:1px solid var(--f-line);border-radius:var(--r-sm);padding:1px var(--sp-1)}
+.opt .rm{color:var(--f-muted);opacity:0;padding:0 2px}
+.opt:hover .rm{opacity:1}
+.addopt{align-self:flex-start;font-size:var(--fs-label);line-height:var(--lh-label);color:var(--f-muted);padding:var(--sp-1) 2px}
+.addopt:hover{color:var(--f-accent-text)}
+.stars{display:flex;gap:var(--sp-2);align-items:center}
+.stars svg{width:23px;height:23px}
+.stars button,.stars span{color:var(--f-muted);opacity:.42;transition:opacity .12s}
+.stars button:hover{opacity:.8}
+.stars .on{color:var(--f-accent-text);opacity:1}
+.scale{display:flex;gap:var(--sp-1);flex-wrap:wrap}
+.scale button,.scale span{min-width:38px;height:38px;display:grid;place-items:center;border:1px solid var(--f-line);border-radius:var(--f-r);font-variant-numeric:tabular-nums;font-size:var(--fs-body);line-height:var(--lh-body)}
+.scale .on{background:var(--f-accent);border-color:var(--f-accent);color:var(--on-accent)}
+.scale-ends{display:flex;justify-content:space-between;gap:var(--sp-2);margin-top:var(--sp-1);font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--f-muted)}
+.scale-ends input{background:none;border:0;font-family:inherit;font-size:var(--fs-caption);line-height:var(--lh-caption);width:46%}
+.scale-ends input:last-child{text-align:right}
+.scale-ends input:focus{outline:none}
+.drop{border:1.5px dashed var(--f-line);border-radius:var(--f-r);padding:var(--sp-4);text-align:center;color:var(--f-muted);font-size:var(--fs-label);line-height:var(--lh-label)}
+.rule{height:1px;background:var(--f-line);margin:var(--sp-3) 0}
+.logic{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);margin:var(--sp-3) 0 var(--sp-1);padding:var(--sp-3) var(--sp-4);border:1px solid var(--f-line);border-radius:var(--f-r);background:var(--f-soft)}
+.logic .lg{font-weight:500;font-size:var(--fs-micro);line-height:var(--lh-micro);text-transform:uppercase;letter-spacing:.08em;color:var(--f-muted)}
+.logic select,.logic input{height:30px;background:var(--f-bg);border:1px solid var(--f-line);border-radius:var(--r-sm);padding:0 var(--sp-2);font-size:var(--fs-label);line-height:var(--lh-label);font-family:inherit;max-width:168px;min-width:0;color:inherit}
+.logic select:focus,.logic input:focus{outline:none;border-color:var(--f-accent)}
+.logic .rm{margin-left:auto;color:var(--f-muted);padding:0 var(--sp-1)}
+.logic .rm:hover{color:var(--danger)}
+.hfrow{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);margin-top:var(--sp-4);padding-top:var(--sp-3);border-top:1px solid var(--f-line)}
+.hfrow code{font-family:var(--mono);font-size:var(--fs-micro);line-height:var(--lh-micro);background:var(--f-soft);padding:var(--sp-1) var(--sp-2);border-radius:var(--r-sm);color:var(--f-muted)}
+.hfrow button{font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--f-muted)}
+.hfrow button:hover{color:var(--f-accent-text)}
+.hfrow .lg{font-weight:500;font-size:var(--fs-micro);line-height:var(--lh-micro);text-transform:uppercase;letter-spacing:.08em;color:var(--f-muted);opacity:.75}
+.hf{display:flex;align-items:center;gap:var(--sp-1);margin-bottom:var(--sp-1)}
+.hf code{font-family:var(--mono);font-size:var(--fs-micro);line-height:var(--lh-micro);background:var(--sunk);padding:var(--sp-1) var(--sp-2);border-radius:var(--r-sm);white-space:nowrap;max-width:118px;overflow:hidden;text-overflow:ellipsis}
+.hf input{flex:1;min-width:0}
+.hf .rm{color:var(--muted);padding:0 var(--sp-1)}
+.hf .rm:hover{color:var(--warn)}
+.pagebreak{display:flex;align-items:center;gap:var(--sp-2);margin:var(--sp-4) 0 var(--sp-1);color:var(--f-muted);font-size:var(--fs-micro);line-height:var(--lh-micro);font-weight:500;text-transform:uppercase;letter-spacing:.08em}
+.pagebreak::before,.pagebreak::after{content:"";flex:1;height:1px;background:var(--f-line)}
+/* The toolbar and the block menu act on the form sheet, so they take the
+   sheet's tokens, not the app's. Otherwise forcing a light form under a dark
+   OS floats a near-black pill over cream. */
+.toolbar{position:absolute;right:0;top:-40px;z-index:5;display:flex;align-items:center;gap:2px;background:var(--f-bg);border:1px solid var(--f-line);border-radius:var(--r);padding:var(--sp-1);box-shadow:var(--shadow)}
+.toolbar button{display:flex;align-items:center;gap:var(--sp-1);padding:var(--sp-1) var(--sp-2);border-radius:var(--r-sm);font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--f-muted)}
+.toolbar button:hover{background:var(--f-soft);color:var(--f-fg)}
+.toolbar button.on{color:var(--f-accent-text);background:var(--f-wash)}
+.toolbar .div{width:1px;align-self:stretch;background:var(--f-line);margin:0 2px}
+
+/* ---------- slash menu ---------- */
+.menu{position:absolute;z-index:60;width:272px;max-height:332px;overflow:auto;background:var(--f-bg);color:var(--f-fg);font-family:var(--ui);border:1px solid var(--f-line);border-radius:var(--r-lg);box-shadow:var(--shadow);padding:var(--sp-1)}
+.menu .q{display:block;width:100%;background:var(--f-soft);color:inherit;border:0;border-radius:var(--r-sm);padding:var(--sp-2) var(--sp-2);font-size:var(--fs-label);line-height:var(--lh-label);margin-bottom:var(--sp-1)}
+.menu .q:focus{outline:none}
+.menu .grp{font-size:var(--fs-micro);line-height:var(--lh-micro);font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--f-muted);padding:var(--sp-2) var(--sp-2) var(--sp-1)}
+.menu .it{display:flex;align-items:center;gap:var(--sp-2);width:100%;padding:var(--sp-2) var(--sp-2);border-radius:var(--r-sm);font-size:var(--fs-label);line-height:var(--lh-label);text-align:left}
+.menu .it .ic{flex:none;display:grid;place-items:center;width:25px;height:25px;border-radius:var(--r-sm);background:var(--f-soft);color:var(--f-muted)}
+.menu .it[aria-selected="true"]{background:var(--f-wash)}
+.menu .it[aria-selected="true"] .ic{background:var(--f-accent);color:var(--on-accent)}
+.menu .none{padding:var(--sp-3) var(--sp-2);color:var(--f-muted);font-size:var(--fs-label);line-height:var(--lh-label)}
+
+/* ---------- panels / overlays ---------- */
+.scrim{position:fixed;inset:0;z-index:50;background:var(--scrim)}
+.panel{position:fixed;z-index:55;top:calc(60px + env(safe-area-inset-top,0px));right:max(14px,env(safe-area-inset-right,0px));width:min(330px,calc(100vw - 28px));max-height:min(74vh,620px);overflow:auto;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow);padding:var(--sp-4)}
+.panel h4{margin:0 0 var(--sp-3);font-size:var(--fs-ask);line-height:var(--lh-ask);font-weight:600}
+.panel .fld{margin-bottom:var(--sp-3)}
+.panel label{display:block;font-size:var(--fs-micro);line-height:var(--lh-micro);font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:var(--sp-1)}
+.panel input[type=text]{width:100%;background:var(--sunk);border:1px solid transparent;border-radius:var(--r);padding:var(--sp-2) var(--sp-2);font-size:var(--fs-body);line-height:var(--lh-body)}
+.panel input[type=text]:focus{outline:none;border-color:var(--accent)}
+.swatches{display:flex;gap:var(--sp-2);flex-wrap:wrap}
+.swatches button{width:26px;height:26px;border-radius:50%;border:2px solid transparent}
+.swatches button[aria-pressed="true"]{border-color:var(--fg)}
+.chips{display:flex;gap:var(--sp-1);flex-wrap:wrap}
+.chips button{padding:var(--sp-1) var(--sp-2);border:1px solid var(--line);border-radius:var(--r);font-size:var(--fs-label);line-height:var(--lh-label)}
+.chips button[aria-pressed="true"]{border-color:var(--accent);background:var(--soft);color:var(--accent)}
+.link{display:flex;gap:var(--sp-1);align-items:center}
+.link code{flex:1;min-width:0;overflow:auto;white-space:nowrap;background:var(--sunk);border-radius:var(--r);padding:var(--sp-2) var(--sp-2);font-family:var(--mono);font-size:var(--fs-caption);line-height:var(--lh-caption)}
+.note{font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--muted);line-height:1.5}
+
+/* ---------- fill ---------- */
+.progress{position:sticky;top:calc(52px + env(safe-area-inset-top,0px));z-index:20;height:3px;background:var(--f-soft)}
+.progress i{display:block;height:100%;background:var(--f-accent);transition:width .3s}
+.q{margin-bottom:var(--sp-5)}
+.q .ql{font-size:var(--fs-ask);line-height:var(--lh-ask);font-weight:600;letter-spacing:-.012em;margin-bottom:var(--sp-2)}
+.q.bad .fi,.q.bad .opt{border-color:var(--danger)}
+.q .err{color:var(--danger);font-size:var(--fs-caption);line-height:var(--lh-caption);margin-top:var(--sp-1)}
+.opt.pick{border-color:var(--f-accent);background:var(--f-soft)}
+.opt.pick .mk{border-color:var(--f-accent);background:var(--f-accent);color:var(--on-accent)}
+button.opt{width:100%;text-align:left;font-size:var(--fs-body);line-height:var(--lh-body)}
+.nav{display:flex;align-items:center;gap:var(--sp-2);margin-top:var(--sp-6)}
+.submit{display:inline-flex;align-items:center;gap:var(--sp-2);background:var(--f-accent);color:var(--on-accent);border-radius:var(--f-r);padding:var(--sp-2) var(--sp-4);font-weight:600;font-size:var(--fs-body);line-height:var(--lh-body)}
+.submit:hover{filter:brightness(1.08)}
+.back{color:var(--f-muted);font-size:var(--fs-label);line-height:var(--lh-label);padding:var(--sp-2)}
+.done{text-align:center;padding:var(--sp-8) 0}
+.done .tick{width:48px;height:48px;margin:0 auto var(--sp-4);border-radius:50%;background:var(--f-accent);color:var(--on-accent);display:grid;place-items:center}
+.done h2{font-size:var(--fs-h1);line-height:var(--lh-h1);letter-spacing:-.02em}
+.done p{color:var(--f-muted);margin:var(--sp-2) 0 var(--sp-5)}
+.badge{position:fixed;right:14px;bottom:14px;z-index:10;font-size:var(--fs-micro);line-height:var(--lh-micro);font-family:var(--mono);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-pill);padding:var(--sp-1) var(--sp-3);color:var(--muted)}
+
+/* ---------- responses ---------- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:var(--sp-2);margin-bottom:var(--sp-4)}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:var(--sp-3) var(--sp-3)}
+.stat b{display:block;font-size:var(--fs-figure);line-height:var(--lh-figure);font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stat span{font-size:var(--fs-micro);line-height:var(--lh-micro);font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.breakdown{display:grid;grid-template-columns:repeat(auto-fit,minmax(252px,1fr));gap:var(--sp-3);margin-bottom:var(--sp-5)}
+.bd{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:var(--sp-3)}
+.bd h4{margin:0 0 var(--sp-2);font-size:var(--fs-label);line-height:var(--lh-label);font-weight:600}
+.bd .r{display:grid;grid-template-columns:1fr auto;gap:var(--sp-1) var(--sp-2);align-items:center;margin-bottom:var(--sp-2);font-size:var(--fs-label);line-height:var(--lh-label)}
+.bd .r span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
+.bd .r b{font-variant-numeric:tabular-nums;font-weight:500}
+.bd .track{grid-column:1/-1;height:5px;border-radius:var(--r-pill);background:var(--sunk);overflow:hidden}
+.bd .track i{display:block;height:100%;background:var(--accent)}
+.tablewrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg)}
+table{border-collapse:collapse;width:100%;font-size:var(--fs-label);line-height:var(--lh-label)}
+th,td{text-align:left;padding:var(--sp-2) var(--sp-3);border-bottom:1px solid var(--line);vertical-align:top;white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis}
+th{font-size:var(--fs-micro);line-height:var(--lh-micro);font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:400;position:sticky;top:0;background:var(--surface)}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--sunk)}
+td.when{color:var(--muted);font-variant-numeric:tabular-nums}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:70;background:var(--fg);color:var(--bg);padding:var(--sp-2) var(--sp-4);border-radius:var(--r-pill);font-size:var(--fs-label);line-height:var(--lh-label);box-shadow:var(--shadow)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* text blocks in the filled form, and the one-question runner */
+.ftitle-read{font-size:var(--fs-display);line-height:var(--lh-display);font-weight:700;letter-spacing:-.03em;margin:0 0 var(--sp-5)}
+.q-h1{font-size:var(--fs-h1);line-height:var(--lh-h1);letter-spacing:-.025em;margin:var(--sp-5) 0 var(--sp-2)}
+.q-h2{font-size:var(--fs-h2);line-height:var(--lh-h2);letter-spacing:-.02em;margin:var(--sp-4) 0 var(--sp-2)}
+.q-text{color:var(--f-muted);margin:0 0 var(--sp-4)}
+.counter{color:var(--f-muted);font-size:var(--fs-caption);line-height:var(--lh-caption);font-family:var(--mono)}
+.canvasform[data-runner="step"] .col{padding-block:var(--sp-8) var(--sp-7)}
+.q .ql-xl{font-size:var(--fs-display);line-height:var(--lh-display);font-weight:700;letter-spacing:-.025em;margin-bottom:var(--sp-5)}
+.runner{display:block;margin-top:var(--sp-7);color:var(--f-muted);font-size:var(--fs-caption);line-height:var(--lh-caption);text-decoration:underline;text-underline-offset:3px}
+.runner:hover{color:var(--f-accent-text)}
+
+/* the form's icon, and the grid it is chosen from */
+.formicon{display:flex;align-items:center;justify-content:center;width:60px;height:60px;border-radius:var(--r-lg);margin-bottom:var(--sp-2)}
+.formicon:hover{background:var(--f-soft)}
+.formicon img{width:48px;height:48px}
+.formicon .addicon{font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--f-muted)}
+.formicon-read{width:52px;height:52px;display:block;margin-bottom:var(--sp-3)}
+.canvasform[data-align="center"] .formicon,.canvasform[data-align="center"] .formicon-read{margin-left:auto;margin-right:auto}
+.cardicon{width:20px;height:20px;vertical-align:-4px;margin-right:var(--sp-1)}
+.crumbicon{width:18px;height:18px}
+.egrid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:var(--sp-1);max-height:264px;overflow:auto;padding-right:var(--sp-1)}
+.egrid button{display:grid;place-items:center;padding:var(--sp-1);border-radius:var(--r-sm)}
+.egrid button:hover{background:var(--sunk)}
+.egrid img{width:24px;height:24px}
+.pubrow{display:flex;align-items:center;gap:var(--sp-2);justify-content:space-between}
+</style>
+</head>
+<body>
+
+<div class="bar" id="bar"></div>
+<div class="stage" id="stage"></div>
+<div id="layer"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>window.SUISEI={"url":"https://ygdzcaneqpgkuumibtga.supabase.co","key":"sb_publishable_JvtFENRbPLMdQXbtCLTxRA_FLvKqJea","emoji":{"ref":"1ffb34c752ecf5d402f04cfb4b392c77f57c54bc","list":[{"n":"1st place medal","p":"1st place medal/Flat/1st_place_medal_flat.svg"},{"n":"Airplane","p":"Airplane/Flat/airplane_flat.svg"},{"n":"Alarm clock","p":"Alarm clock/Flat/alarm_clock_flat.svg"},{"n":"Anchor","p":"Anchor/Flat/anchor_flat.svg"},{"n":"Artist palette","p":"Artist palette/Flat/artist_palette_flat.svg"},{"n":"Automobile","p":"Automobile/Flat/automobile_flat.svg"},{"n":"Avocado","p":"Avocado/Flat/avocado_flat.svg"},{"n":"Balloon","p":"Balloon/Flat/balloon_flat.svg"},{"n":"Banana","p":"Banana/Flat/banana_flat.svg"},{"n":"Bar chart","p":"Bar chart/Flat/bar_chart_flat.svg"},{"n":"Beach with umbrella","p":"Beach with umbrella/Flat/beach_with_umbrella_flat.svg"},{"n":"Bear","p":"Bear/Flat/bear_flat.svg"},{"n":"Beer mug","p":"Beer mug/Flat/beer_mug_flat.svg"},{"n":"Bell","p":"Bell/Flat/bell_flat.svg"},{"n":"Bento box","p":"Bento box/Flat/bento_box_flat.svg"},{"n":"Bicycle","p":"Bicycle/Flat/bicycle_flat.svg"},{"n":"Birthday cake","p":"Birthday cake/Flat/birthday_cake_flat.svg"},{"n":"Blue heart","p":"Blue heart/Flat/blue_heart_flat.svg"},{"n":"Bookmark","p":"Bookmark/Flat/bookmark_flat.svg"},{"n":"Books","p":"Books/Flat/books_flat.svg"},{"n":"Briefcase","p":"Briefcase/Flat/briefcase_flat.svg"},{"n":"Broccoli","p":"Broccoli/Flat/broccoli_flat.svg"},{"n":"Bubble tea","p":"Bubble tea/Flat/bubble_tea_flat.svg"},{"n":"Bullseye","p":"Bullseye/Flat/bullseye_flat.svg"},{"n":"Butterfly","p":"Butterfly/Flat/butterfly_flat.svg"},{"n":"Cactus","p":"Cactus/Flat/cactus_flat.svg"},{"n":"Calendar","p":"Calendar/Flat/calendar_flat.svg"},{"n":"Camera","p":"Camera/Flat/camera_flat.svg"},{"n":"Camping","p":"Camping/Flat/camping_flat.svg"},{"n":"Card index dividers","p":"Card index dividers/Flat/card_index_dividers_flat.svg"},{"n":"Castle","p":"Castle/Flat/castle_flat.svg"},{"n":"Cat face","p":"Cat face/Flat/cat_face_flat.svg"},{"n":"Chart increasing","p":"Chart increasing/Flat/chart_increasing_flat.svg"},{"n":"Check mark button","p":"Check mark button/Flat/check_mark_button_flat.svg"},{"n":"Cherry blossom","p":"Cherry blossom/Flat/cherry_blossom_flat.svg"},{"n":"Clapping hands","p":"Clapping hands/Default/Flat/clapping_hands_flat_default.svg"},{"n":"Clinking beer mugs","p":"Clinking beer mugs/Flat/clinking_beer_mugs_flat.svg"},{"n":"Clipboard","p":"Clipboard/Flat/clipboard_flat.svg"},{"n":"Cloud","p":"Cloud/Flat/cloud_flat.svg"},{"n":"Compass","p":"Compass/Flat/compass_flat.svg"},{"n":"Confetti ball","p":"Confetti ball/Flat/confetti_ball_flat.svg"},{"n":"Cookie","p":"Cookie/Flat/cookie_flat.svg"},{"n":"Crayon","p":"Crayon/Flat/crayon_flat.svg"},{"n":"Credit card","p":"Credit card/Flat/credit_card_flat.svg"},{"n":"Crescent moon","p":"Crescent moon/Flat/crescent_moon_flat.svg"},{"n":"Cross mark","p":"Cross mark/Flat/cross_mark_flat.svg"},{"n":"Cup with straw","p":"Cup with straw/Flat/cup_with_straw_flat.svg"},{"n":"Deciduous tree","p":"Deciduous tree/Flat/deciduous_tree_flat.svg"},{"n":"Desktop computer","p":"Desktop computer/Flat/desktop_computer_flat.svg"},{"n":"Dog","p":"Dog/Flat/dog_flat.svg"},{"n":"Dollar banknote","p":"Dollar banknote/Flat/dollar_banknote_flat.svg"},{"n":"Dolphin","p":"Dolphin/Flat/dolphin_flat.svg"},{"n":"Doughnut","p":"Doughnut/Flat/doughnut_flat.svg"},{"n":"Droplet","p":"Droplet/Flat/droplet_flat.svg"},{"n":"Envelope","p":"Envelope/Flat/envelope_flat.svg"},{"n":"Face blowing a kiss","p":"Face blowing a kiss/Flat/face_blowing_a_kiss_flat.svg"},{"n":"Face with monocle","p":"Face with monocle/Flat/face_with_monocle_flat.svg"},{"n":"Face with tears of joy","p":"Face with tears of joy/Flat/face_with_tears_of_joy_flat.svg"},{"n":"Fire","p":"Fire/Flat/fire_flat.svg"},{"n":"Flexed biceps","p":"Flexed biceps/Default/Flat/flexed_biceps_flat_default.svg"},{"n":"Folded hands","p":"Folded hands/Default/Flat/folded_hands_flat_default.svg"},{"n":"Four leaf clover","p":"Four leaf clover/Flat/four_leaf_clover_flat.svg"},{"n":"Fox","p":"Fox/Flat/fox_flat.svg"},{"n":"French fries","p":"French fries/Flat/french_fries_flat.svg"},{"n":"Gear","p":"Gear/Flat/gear_flat.svg"},{"n":"Glowing star","p":"Glowing star/Flat/glowing_star_flat.svg"},{"n":"Grapes","p":"Grapes/Flat/grapes_flat.svg"},{"n":"Green apple","p":"Green apple/Flat/green_apple_flat.svg"},{"n":"Green heart","p":"Green heart/Flat/green_heart_flat.svg"},{"n":"Grinning face","p":"Grinning face/Flat/grinning_face_flat.svg"},{"n":"Hamburger","p":"Hamburger/Flat/hamburger_flat.svg"},{"n":"Hammer","p":"Hammer/Flat/hammer_flat.svg"},{"n":"Headphone","p":"Headphone/Flat/headphone_flat.svg"},{"n":"Herb","p":"Herb/Flat/herb_flat.svg"},{"n":"High voltage","p":"High voltage/Flat/high_voltage_flat.svg"},{"n":"Honeybee","p":"Honeybee/Flat/honeybee_flat.svg"},{"n":"Hospital","p":"Hospital/Flat/hospital_flat.svg"},{"n":"Hot beverage","p":"Hot beverage/Flat/hot_beverage_flat.svg"},{"n":"Hourglass done","p":"Hourglass done/Flat/hourglass_done_flat.svg"},{"n":"House","p":"House/Flat/house_flat.svg"},{"n":"Hugging face","p":"Hugging face/Flat/hugging_face_flat.svg"},{"n":"Hundred points","p":"Hundred points/Flat/hundred_points_flat.svg"},{"n":"Inbox tray","p":"Inbox tray/Flat/inbox_tray_flat.svg"},{"n":"Index pointing up","p":"Index pointing up/Default/Flat/index_pointing_up_flat_default.svg"},{"n":"Infinity","p":"Infinity/Flat/infinity_flat.svg"},{"n":"Information","p":"Information/Flat/information_flat.svg"},{"n":"Key","p":"Key/Flat/key_flat.svg"},{"n":"Label","p":"Label/Flat/label_flat.svg"},{"n":"Laptop","p":"Laptop/Flat/laptop_flat.svg"},{"n":"Light bulb","p":"Light bulb/Flat/light_bulb_flat.svg"},{"n":"Link","p":"Link/Flat/link_flat.svg"},{"n":"Locked","p":"Locked/Flat/locked_flat.svg"},{"n":"Locomotive","p":"Locomotive/Flat/locomotive_flat.svg"},{"n":"Magnifying glass tilted left","p":"Magnifying glass tilted left/Flat/magnifying_glass_tilted_left_flat.svg"},{"n":"Maple leaf","p":"Maple leaf/Flat/maple_leaf_flat.svg"},{"n":"Megaphone","p":"Megaphone/Flat/megaphone_flat.svg"},{"n":"Melting face","p":"Melting face/Flat/melting_face_flat.svg"},{"n":"Memo","p":"Memo/Flat/memo_flat.svg"},{"n":"Microphone","p":"Microphone/Flat/microphone_flat.svg"},{"n":"Microscope","p":"Microscope/Flat/microscope_flat.svg"},{"n":"Mobile phone","p":"Mobile phone/Flat/mobile_phone_flat.svg"},{"n":"Money bag","p":"Money bag/Flat/money_bag_flat.svg"},{"n":"Mountain","p":"Mountain/Flat/mountain_flat.svg"},{"n":"Mushroom","p":"Mushroom/Flat/mushroom_flat.svg"},{"n":"National park","p":"National park/Flat/national_park_flat.svg"},{"n":"Nerd face","p":"Nerd face/Flat/nerd_face_flat.svg"},{"n":"Octopus","p":"Octopus/Flat/octopus_flat.svg"},{"n":"Office building","p":"Office building/Flat/office_building_flat.svg"},{"n":"Open book","p":"Open book/Flat/open_book_flat.svg"},{"n":"Orange heart","p":"Orange heart/Flat/orange_heart_flat.svg"},{"n":"Package","p":"Package/Flat/package_flat.svg"},{"n":"Paintbrush","p":"Paintbrush/Flat/paintbrush_flat.svg"},{"n":"Panda","p":"Panda/Flat/panda_flat.svg"},{"n":"Paperclip","p":"Paperclip/Flat/paperclip_flat.svg"},{"n":"Party popper","p":"Party popper/Flat/party_popper_flat.svg"},{"n":"Partying face","p":"Partying face/Flat/partying_face_flat.svg"},{"n":"Pencil","p":"Pencil/Flat/pencil_flat.svg"},{"n":"Penguin","p":"Penguin/Flat/penguin_flat.svg"},{"n":"Pizza","p":"Pizza/Flat/pizza_flat.svg"},{"n":"Potted plant","p":"Potted plant/Flat/potted_plant_flat.svg"},{"n":"Purple heart","p":"Purple heart/Flat/purple_heart_flat.svg"},{"n":"Pushpin","p":"Pushpin/Flat/pushpin_flat.svg"},{"n":"Rabbit face","p":"Rabbit face/Flat/rabbit_face_flat.svg"},{"n":"Rainbow","p":"Rainbow/Flat/rainbow_flat.svg"},{"n":"Raising hands","p":"Raising hands/Default/Flat/raising_hands_flat_default.svg"},{"n":"Recycling symbol","p":"Recycling symbol/Flat/recycling_symbol_flat.svg"},{"n":"Red apple","p":"Red apple/Flat/red_apple_flat.svg"},{"n":"Red heart","p":"Red heart/Flat/red_heart_flat.svg"},{"n":"Red question mark","p":"Red question mark/Flat/red_question_mark_flat.svg"},{"n":"Rice ball","p":"Rice ball/Flat/rice_ball_flat.svg"},{"n":"Rocket","p":"Rocket/Flat/rocket_flat.svg"},{"n":"Rose","p":"Rose/Flat/rose_flat.svg"},{"n":"Round pushpin","p":"Round pushpin/Flat/round_pushpin_flat.svg"},{"n":"Sailboat","p":"Sailboat/Flat/sailboat_flat.svg"},{"n":"Saluting face","p":"Saluting face/Flat/saluting_face_flat.svg"},{"n":"School","p":"School/Flat/school_flat.svg"},{"n":"Scissors","p":"Scissors/Flat/scissors_flat.svg"},{"n":"Seedling","p":"Seedling/Flat/seedling_flat.svg"},{"n":"Shopping cart","p":"Shopping cart/Flat/shopping_cart_flat.svg"},{"n":"Shortcake","p":"Shortcake/Flat/shortcake_flat.svg"},{"n":"Shushing face","p":"Shushing face/Flat/shushing_face_flat.svg"},{"n":"Smiling face with hearts","p":"Smiling face with hearts/Flat/smiling_face_with_hearts_flat.svg"},{"n":"Smiling face with smiling eyes","p":"Smiling face with smiling eyes/Flat/smiling_face_with_smiling_eyes_flat.svg"},{"n":"Smiling face with sunglasses","p":"Smiling face with sunglasses/Flat/smiling_face_with_sunglasses_flat.svg"},{"n":"Snowflake","p":"Snowflake/Flat/snowflake_flat.svg"},{"n":"Sparkles","p":"Sparkles/Flat/sparkles_flat.svg"},{"n":"Sparkling heart","p":"Sparkling heart/Flat/sparkling_heart_flat.svg"},{"n":"Speech balloon","p":"Speech balloon/Flat/speech_balloon_flat.svg"},{"n":"Spiral calendar","p":"Spiral calendar/Flat/spiral_calendar_flat.svg"},{"n":"Star","p":"Star/Flat/star_flat.svg"},{"n":"Steaming bowl","p":"Steaming bowl/Flat/steaming_bowl_flat.svg"},{"n":"Straight ruler","p":"Straight ruler/Flat/straight_ruler_flat.svg"},{"n":"Strawberry","p":"Strawberry/Flat/strawberry_flat.svg"},{"n":"Sun","p":"Sun/Flat/sun_flat.svg"},{"n":"Sunflower","p":"Sunflower/Flat/sunflower_flat.svg"},{"n":"Sushi","p":"Sushi/Flat/sushi_flat.svg"},{"n":"Teacup without handle","p":"Teacup without handle/Flat/teacup_without_handle_flat.svg"},{"n":"Telescope","p":"Telescope/Flat/telescope_flat.svg"},{"n":"Test tube","p":"Test tube/Flat/test_tube_flat.svg"},{"n":"Thinking face","p":"Thinking face/Flat/thinking_face_flat.svg"},{"n":"Thought balloon","p":"Thought balloon/Flat/thought_balloon_flat.svg"},{"n":"Thumbs up","p":"Thumbs up/Default/Flat/thumbs_up_flat_default.svg"},{"n":"Ticket","p":"Ticket/Flat/ticket_flat.svg"},{"n":"Tokyo tower","p":"Tokyo tower/Flat/tokyo_tower_flat.svg"},{"n":"Toolbox","p":"Toolbox/Flat/toolbox_flat.svg"},{"n":"Trophy","p":"Trophy/Flat/trophy_flat.svg"},{"n":"Tulip","p":"Tulip/Flat/tulip_flat.svg"},{"n":"Turtle","p":"Turtle/Flat/turtle_flat.svg"},{"n":"Unicorn","p":"Unicorn/Flat/unicorn_flat.svg"},{"n":"Unlocked","p":"Unlocked/Flat/unlocked_flat.svg"},{"n":"Victory hand","p":"Victory hand/Default/Flat/victory_hand_flat_default.svg"},{"n":"Warning","p":"Warning/Flat/warning_flat.svg"},{"n":"Water wave","p":"Water wave/Flat/water_wave_flat.svg"},{"n":"Watermelon","p":"Watermelon/Flat/watermelon_flat.svg"},{"n":"Waving hand","p":"Waving hand/Default/Flat/waving_hand_flat_default.svg"},{"n":"Whale","p":"Whale/Flat/whale_flat.svg"},{"n":"Wine glass","p":"Wine glass/Flat/wine_glass_flat.svg"},{"n":"Winking face","p":"Winking face/Flat/winking_face_flat.svg"},{"n":"World map","p":"World map/Flat/world_map_flat.svg"},{"n":"Wrapped gift","p":"Wrapped gift/Flat/wrapped_gift_flat.svg"},{"n":"Wrench","p":"Wrench/Flat/wrench_flat.svg"},{"n":"Writing hand","p":"Writing hand/Default/Flat/writing_hand_flat_default.svg"},{"n":"Yellow heart","p":"Yellow heart/Flat/yellow_heart_flat.svg"}]}};</script>
+<script>
+"use strict";
+/* ============================ model ============================ */
+const uid = p => (p||'') + Math.random().toString(36).slice(2,9);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const KEYS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+const SVG = d => '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">'+d+'</svg>';
+const I = {
+  text:SVG('<path d="M3 5.5h10M3 9h7"/>'),
+  para:SVG('<path d="M3 4h10M3 7.5h10M3 11h6"/>'),
+  radio:SVG('<circle cx="8" cy="8" r="5.2"/><circle cx="8" cy="8" r="2" fill="currentColor"/>'),
+  check:SVG('<rect x="2.8" y="2.8" width="10.4" height="10.4" rx="2.6"/><path d="M5.6 8.2l1.7 1.7 3.2-3.4"/>'),
+  chev:SVG('<rect x="2.5" y="4" width="11" height="8" rx="2.2"/><path d="M6.4 7.4L8 9l1.6-1.6"/>'),
+  hash:SVG('<path d="M6.2 2.6L4.8 13.4M11.2 2.6L9.8 13.4M2.8 5.8h10.4M2.4 10.2h10.4"/>'),
+  at:SVG('<circle cx="8" cy="8" r="2.4"/><path d="M10.4 5.6v3.2a2 2 0 0 0 3.1 1.6A6 6 0 1 0 11 13.4"/>'),
+  phone:SVG('<rect x="4.2" y="1.8" width="7.6" height="12.4" rx="2"/><path d="M7.2 12.2h1.6"/>'),
+  link:SVG('<path d="M6.6 9.4a2.6 2.6 0 0 0 3.8.2l1.8-1.8a2.7 2.7 0 0 0-3.8-3.8l-1 1"/><path d="M9.4 6.6a2.6 2.6 0 0 0-3.8-.2L3.8 8.2a2.7 2.7 0 0 0 3.8 3.8l1-1"/>'),
+  cal:SVG('<rect x="2.4" y="3.4" width="11.2" height="10.2" rx="2"/><path d="M2.4 6.6h11.2M5.6 1.8v2.4M10.4 1.8v2.4"/>'),
+  star:SVG('<path d="M8 2.4l1.7 3.5 3.8.5-2.8 2.7.7 3.8L8 11.1l-3.4 1.8.7-3.8L2.5 6.4l3.8-.5z"/>'),
+  scale:SVG('<path d="M2.4 8h11.2M4.6 5.6v4.8M9 5.6v4.8M13 5.6v4.8"/>'),
+  file:SVG('<path d="M9 1.8H5a2 2 0 0 0-2 2v8.4a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V5.8z"/><path d="M9 1.8v4h4"/>'),
+  h1:SVG('<path d="M3 3.4v9.2M8.4 3.4v9.2M3 8h5.4M11.4 6.6l1.6-1.1v7.1"/>'),
+  h2:SVG('<path d="M3 3.8v8.4M7.4 3.8v8.4M3 8h4.4M10.4 6.4a1.7 1.7 0 1 1 2.8 1.3l-2.8 2.8h3"/>'),
+  minus:SVG('<path d="M2.6 8h10.8"/>'),
+  page:SVG('<path d="M2.4 8h3M10.6 8h3M8 2.6v10.8" stroke-dasharray="2 2"/>'),
+  plus:SVG('<path d="M8 3.4v9.2M3.4 8h9.2"/>'),
+  grip:SVG('<circle cx="6" cy="4" r="1" fill="currentColor" stroke="none"/><circle cx="10" cy="4" r="1" fill="currentColor" stroke="none"/><circle cx="6" cy="8" r="1" fill="currentColor" stroke="none"/><circle cx="10" cy="8" r="1" fill="currentColor" stroke="none"/><circle cx="6" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="10" cy="12" r="1" fill="currentColor" stroke="none"/>'),
+  trash:SVG('<path d="M3.4 4.4h9.2M6.4 4.4V3a1 1 0 0 1 1-1h1.2a1 1 0 0 1 1 1v1.4M4.6 4.4l.6 8a1 1 0 0 0 1 1h3.6a1 1 0 0 0 1-1l.6-8"/>'),
+  copy:SVG('<rect x="5.4" y="5.4" width="8" height="8" rx="1.8"/><path d="M10.6 5.4V4a1.4 1.4 0 0 0-1.4-1.4H4a1.4 1.4 0 0 0-1.4 1.4v5.2A1.4 1.4 0 0 0 4 10.6h1.4"/>'),
+  down:SVG('<path d="M8 2.6v8M4.8 7.6L8 10.8l3.2-3.2M2.8 13.4h10.4"/>'),
+  eye:SVG('<path d="M1.6 8s2.4-4.2 6.4-4.2S14.4 8 14.4 8s-2.4 4.2-6.4 4.2S1.6 8 1.6 8z"/><circle cx="8" cy="8" r="1.8"/>'),
+  share:SVG('<circle cx="12" cy="4" r="2"/><circle cx="4" cy="8" r="2"/><circle cx="12" cy="12" r="2"/><path d="M5.8 7l4.4-2.2M5.8 9l4.4 2.2"/>'),
+  paint:SVG('<path d="M8 1.8a6.2 6.2 0 1 0 0 12.4c.9 0 1.3-.6 1.3-1.2 0-.7-.6-1.2-.6-1.8 0-.6.5-1 1.1-1h1.3a3.1 3.1 0 0 0 3.1-3.1C14.2 4 11.4 1.8 8 1.8z"/><circle cx="5.2" cy="7" r=".9" fill="currentColor" stroke="none"/><circle cx="8" cy="5" r=".9" fill="currentColor" stroke="none"/>'),
+  arrow:SVG('<path d="M3 8h10M9.2 4.2L13 8l-3.8 3.8"/>'),
+  tick:SVG('<path d="M3.6 8.4l3 3 5.8-6.4" stroke-width="2"/>'),
+  back:SVG('<path d="M13 8H3M6.8 4.2L3 8l3.8 3.8"/>'),
+  google:'<svg viewBox="0 0 18 18" width="15" height="15" aria-hidden="true">'
+    + '<path fill="#4285F4" d="M17.6 9.2c0-.6-.1-1.3-.2-1.9H9v3.5h4.8a4.1 4.1 0 0 1-1.8 2.7v2.2h2.9c1.7-1.6 2.7-3.9 2.7-6.5z"/>'
+    + '<path fill="#34A853" d="M9 18c2.4 0 4.5-.8 6-2.2l-2.9-2.3c-.8.6-1.9.9-3.1.9-2.4 0-4.4-1.6-5.1-3.8H.9v2.3A9 9 0 0 0 9 18z"/>'
+    + '<path fill="#FBBC05" d="M3.9 10.6a5.4 5.4 0 0 1 0-3.4V4.9H.9a9 9 0 0 0 0 8.1l3-2.4z"/>'
+    + '<path fill="#EA4335" d="M9 3.6c1.3 0 2.5.5 3.4 1.3l2.6-2.6A9 9 0 0 0 .9 4.9l3 2.3C4.6 5.1 6.6 3.6 9 3.6z"/></svg>',
+  branch:SVG('<circle cx="4.4" cy="3.6" r="1.8"/><circle cx="4.4" cy="12.4" r="1.8"/><circle cx="11.6" cy="8" r="1.8"/><path d="M4.4 5.4v5.2M6.2 3.6h2.2a1.2 1.2 0 0 1 1.2 1.2v1.4"/>'),
+};
+
+const TYPES = {
+  short_text:{n:'Short answer',g:'Input',i:'text'},
+  long_text:{n:'Long answer',g:'Input',i:'para'},
+  choice:{n:'Multiple choice',g:'Input',i:'radio'},
+  checkboxes:{n:'Checkboxes',g:'Input',i:'check'},
+  dropdown:{n:'Dropdown',g:'Input',i:'chev'},
+  number:{n:'Number',g:'Input',i:'hash'},
+  email:{n:'Email',g:'Input',i:'at'},
+  phone:{n:'Phone number',g:'Input',i:'phone'},
+  url:{n:'Link',g:'Input',i:'link'},
+  date:{n:'Date',g:'Input',i:'cal'},
+  rating:{n:'Rating',g:'Input',i:'star'},
+  scale:{n:'Linear scale',g:'Input',i:'scale'},
+  file:{n:'File upload',g:'Input',i:'file'},
+  h1:{n:'Heading 1',g:'Layout',i:'h1'},
+  h2:{n:'Heading 2',g:'Layout',i:'h2'},
+  text:{n:'Text',g:'Layout',i:'para'},
+  divider:{n:'Divider',g:'Layout',i:'minus'},
+  page:{n:'Page break',g:'Layout',i:'page'},
+};
+const INPUTS = Object.keys(TYPES).filter(t=>TYPES[t].g==='Input');
+const isInput = t => TYPES[t] && TYPES[t].g==='Input';
+const PH = {short_text:'Type your answer…',long_text:'Type your answer…',number:'0',email:'name@example.com',phone:'+81 90 1234 5678',url:'https://',date:'',file:''};
+
+const ACCENTS = ['#1f4d52','#a85b14','#1b1f22','#2f6b4f','#28527a','#8a3324','#6d3f63','#8c5a3c'];
+const FONTS = {sans:"var(--ui)",serif:"var(--serif)",mono:"var(--mono)"};
+const FONT_NAMES = {sans:'Gothic', serif:'Mincho', mono:'Mono'};
+
+function block(type, label, extra){
+  const b = {id:uid('b'), type, label:label||'', required:false, placeholder:PH[type]||''};
+  if(type==='choice'||type==='checkboxes'||type==='dropdown') b.options = [{id:uid('o'),text:''},{id:uid('o'),text:''}];
+  if(type==='rating') b.max = 5;
+  if(type==='scale'){ b.max = 10; b.left='Not likely'; b.right='Very likely'; }
+  return Object.assign(b, extra||{});
+}
+function newForm(title, blocks, logic){
+  return {id:uid('f'), title:title||'Untitled form', emoji:'', published:false, blocks:blocks||[block('short_text','')], logic:logic||[], hidden:[],
+    theme:{accent:ACCENTS[0], font:'sans', align:'left', radius:10, bg:'auto', runner:'grid', submit:'Submit', thanks:'Thanks for filling this out.'},
+    createdAt:Date.now(), updatedAt:Date.now()};
+}
+const TEMPLATES = {
+  contact:()=>newForm('Contact us',[
+    block('text','Tell us what you need and we will get back within one business day.'),
+    block('short_text','Your name',{required:true}),
+    block('email','Email address',{required:true}),
+    block('choice','What is this about?',{options:[{id:uid('o'),text:'Sales'},{id:uid('o'),text:'Support'},{id:uid('o'),text:'Partnership'},{id:uid('o'),text:'Something else'}]}),
+    block('long_text','Your message',{required:true}),
+  ]),
+  rsvp:()=>{
+    const yes = {id:uid('o'),text:'Yes, count me in'};
+    const going = block('choice','Will you be there?',{required:true,options:[yes,{id:uid('o'),text:'No, can not make it'},{id:uid('o'),text:'Maybe'}]});
+    const seats = block('number','How many seats do you need?');
+    const diet = block('checkboxes','Dietary notes',{options:[{id:uid('o'),text:'Vegetarian'},{id:uid('o'),text:'Vegan'},{id:uid('o'),text:'No alcohol'},{id:uid('o'),text:'No restrictions'}]});
+    return newForm('Event RSVP',[
+      block('h2','Friday demo night'),
+      block('text','Doors at 18:30, talks start at 19:00.'),
+      block('short_text','Your name',{required:true}),
+      going, seats, diet,
+    ],[
+      {id:uid('r'), when:going.id, op:'is', value:yes.id, do:'show', target:seats.id},
+      {id:uid('r'), when:going.id, op:'is', value:yes.id, do:'show', target:diet.id},
+    ]);
+  },
+  feedback:()=>newForm('Product feedback',[
+    block('rating','How would you rate your experience?',{required:true,max:5}),
+    block('scale','How likely are you to recommend us?',{max:10,left:'Not likely',right:'Very likely'}),
+    block('long_text','What should we fix first?'),
+    block('page',''),
+    block('h2','One last thing'),
+    block('email','Email, if you want a reply'),
+  ]),
+  job:()=>newForm('Job application',[
+    block('h1','Frontend engineer'),
+    block('text','Remote-friendly, Tokyo time zone. We read every application.'),
+    block('short_text','Full name',{required:true}),
+    block('email','Email',{required:true}),
+    block('url','Portfolio or GitHub'),
+    block('file','Resume'),
+    block('page',''),
+    block('long_text','Why this role?',{required:true}),
+    block('choice','Earliest start',{options:[{id:uid('o'),text:'Immediately'},{id:uid('o'),text:'Within a month'},{id:uid('o'),text:'Later than that'}]}),
+  ]),
+};
+
+/* ============================ store ============================ */
+const LS = 'suisei.v1';
+const CFG = window.SUISEI || {};
+/* Microsoft's Fluent Emoji, MIT licensed, served from the repo at a pinned
+   commit. Flat is the SVG style: a couple of KB each, so a grid of them is
+   cheaper than one 3D png. */
+const EMOJI = CFG.emoji || {ref:'main', list:[]};
+const emojiUrl = p => 'https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@' + EMOJI.ref
+  + '/assets/' + String(p).split('/').map(encodeURIComponent).join('/');
+const emojiImg = (p, cls) => `<img class="${cls}" src="${emojiUrl(p)}" alt="" loading="lazy" decoding="async">`;
+const sb = (CFG.url && CFG.key && window.supabase)
+  ? window.supabase.createClient(CFG.url, CFG.key,
+      {auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}})
+  : null;
+
+/* A submission is one shape in the page and another in the table. */
+const rowToSub = r => ({id:r.id, formId:r.form_id, createdAt:new Date(r.created_at).getTime(),
+                        answers:r.answers||{}, hidden:r.hidden||{}});
+
+const store = {
+  sb, user:null, ready:false, downloads:null, editor:false, offline:!sb, hasPublished:null,
+  forms:{}, subs:[], remote:[], counts:{}, onSubs:null, onSubsId:null, lastError:null,
+  readLocal(){ try{ return JSON.parse(localStorage.getItem(LS)||'{}') }catch(e){ return {} } },
+  writeLocal(){ try{ localStorage.setItem(LS, JSON.stringify({forms:this.forms, subs:this.subs.filter(s=>s.local)})) }catch(e){} },
+
+  async boot(){
+    const cached = this.readLocal();
+    if(cached.forms) this.forms = cached.forms;
+    if(cached.subs) this.subs = cached.subs;
+    render();
+    if(!sb){ this.ready = true; render(); if(fromHash()) render(); return; }
+    try{
+      const {data} = await sb.auth.getSession();
+      this.user = data && data.session ? data.session.user : null;
+    }catch(e){ this.user = null; }
+    this.editor = !!this.user;
+    sb.auth.onAuthStateChange((_evt, session) => {
+      this.user = session ? session.user : null;
+      this.editor = !!this.user;
+      this.loadForms(); this.loadCounts(); render();
+    });
+    this.ready = true;
+    await this.loadForms();
+    this.loadCounts();
+    const wanted = readLink().token;
+    if(wanted.startsWith('form-')) await this.loadForm(wanted.slice(5));
+    render();
+    if(fromHash()) render();
+  },
+
+  /* The workspace is yours alone: it asks only for forms you own. A form
+     someone is filling is fetched one at a time by id instead, which is the
+     only read a respondent ever needs. */
+  async loadForms(){
+    if(!sb || !this.user) return;
+    // the published column arrives with a migration; until it is run the app
+    // behaves as it did before rather than failing every read and write
+    const cols = this.hasPublished === false ? 'id,doc,updated_at' : 'id,doc,updated_at,published';
+    let {data, error} = await sb.from('forms').select(cols)
+      .eq('owner', this.user.id).order('updated_at',{ascending:false});
+    if(error && /published/.test(error.message||'')){
+      this.hasPublished = false;
+      ({data, error} = await sb.from('forms').select('id,doc,updated_at')
+        .eq('owner', this.user.id).order('updated_at',{ascending:false}));
+    } else if(!error && this.hasPublished === null){
+      this.hasPublished = true;
+    }
+    if(error){ this.lastError = error.message; render(); return; }
+    this.lastError = null;
+    const seen = new Set();
+    (data||[]).forEach(row => {
+      const f = row.doc; if(!f || !f.id) return;
+      seen.add(f.id);
+      if('published' in row) f.published = !!row.published;
+      if(f.id === state.formId && Date.now() < state.dirtyUntil) return;  // mid-edit
+      this.forms[f.id] = f;
+    });
+    this.writeLocal();
+  },
+
+  async loadForm(id){
+    if(!sb || !id || this.forms[id]) return;
+    const {data} = await sb.from('forms').select('doc').eq('id', id).limit(1);
+    const doc = data && data[0] && data[0].doc;
+    if(doc && doc.id){ this.forms[doc.id] = doc; render(); }
+    else { state.missing = id; render(); }        // unpublished, or gone
+  },
+
+  async loadCounts(){
+    if(!sb || !this.user) return;
+    const {data, error} = await sb.from('submissions').select('form_id');
+    if(error) return;                                   // only the owner may read these
+    const c = {};
+    (data||[]).forEach(r => { c[r.form_id] = (c[r.form_id]||0) + 1; });
+    this.counts = c; render();
+  },
+
+  saveForm(f){
+    f.updatedAt = Date.now();
+    this.forms[f.id] = f;
+    this.writeLocal();
+    clearTimeout(this._t);
+    this._t = setTimeout(async () => {
+      if(!sb || !this.user) return;                     // signed out: this device only
+      const doc = JSON.parse(JSON.stringify(f));
+      const row = {id:f.id, owner:this.user.id, title:f.title||'Untitled form', doc};
+      if(this.hasPublished !== false) row.published = !!f.published;
+      let {error} = await sb.from('forms').upsert(row, {onConflict:'id'});
+      if(error && /published/.test(error.message||'')){
+        this.hasPublished = false;
+        delete row.published;
+        ({error} = await sb.from('forms').upsert(row, {onConflict:'id'}));
+      }
+      if(error){ this.lastError = error.message; console.warn('save', error); render(); }
+      else if(this.lastError){ this.lastError = null; render(); }
+    }, 600);
+  },
+
+  async deleteForm(id){
+    delete this.forms[id]; delete this.counts[id]; this.writeLocal();
+    if(sb && this.user) await sb.from('forms').delete().eq('id', id);
+  },
+
+  async submit(rec){
+    if(sb){
+      const {error} = await sb.from('submissions')
+        .insert({id:rec.id, form_id:rec.formId, answers:rec.answers, hidden:rec.hidden||{}});
+      if(!error){ this.counts[rec.formId] = (this.counts[rec.formId]||0) + 1; this.bump(rec); return {ok:true}; }
+      rec.local = true; this.subs.push(rec); this.writeLocal();
+      return {ok:false, code:error.code, message:error.message};
+    }
+    rec.local = true; this.subs.push(rec); this.writeLocal();
+    return {ok:true, offline:true};
+  },
+
+  bump(rec){ if(!this.remote.some(r=>r.id===rec.id)) this.remote.push(rec); },
+  rowsFor(formId){
+    const seen = new Set();
+    return this.remote.concat(this.subs).filter(r => r.formId===formId && !seen.has(r.id) && seen.add(r.id));
+  },
+  async watchSubs(formId, cb){
+    this.onSubs = cb; this.onSubsId = formId;
+    cb(this.rowsFor(formId));
+    if(!sb || !this.user) return;
+    const {data, error} = await sb.from('submissions')
+      .select('id,form_id,answers,hidden,created_at').eq('form_id', formId)
+      .order('created_at',{ascending:false}).limit(500);
+    if(error){ this.lastError = error.message; render(); return; }
+    this.remote = (data||[]).map(rowToSub);
+    if(this.onSubs && this.onSubsId===formId) this.onSubs(this.rowsFor(formId));
+    render();
+  },
+  stopWatch(){ this.onSubs = null; },
+  countFor(id){
+    const n = this.counts[id];
+    return (n === undefined ? 0 : n) + this.subs.filter(s => s.formId===id).length;
+  },
+
+  async signIn(){
+    if(!sb) return {ok:false, message:'No Supabase project configured'};
+    const {error} = await sb.auth.signInWithOAuth({provider:'google',
+      options:{redirectTo: location.origin + location.pathname}});
+    // on success the browser leaves for Google and comes back signed in
+    return error ? {ok:false, message:error.message} : {ok:true};
+  },
+  async signOut(){ if(sb) await sb.auth.signOut(); this.counts = {}; this.remote = []; render(); },
+};
+
+/* ============================ app state ============================ */
+const state = {view:'home', formId:null, sel:null, focus:null, menu:null, panel:null,
+  dirtyUntil:0, page:0, step:0, hist:[], answers:{}, bad:{}, done:false, rows:null, confirmDel:null,
+  hidden:{}, testHidden:{}, emojiQ:'', missing:null};
+const form = () => store.forms[state.formId];
+const bar = document.getElementById('bar');
+const stage = document.getElementById('stage');
+const layer = document.getElementById('layer');
+
+function toast(msg){
+  const t = document.createElement('div'); t.className='toast'; t.textContent = msg;
+  layer.appendChild(t); setTimeout(()=>t.remove(), 2600);
+}
+function go(view, id){
+  state.missing = null;
+  if(id!==undefined && id!==state.formId) state.testHidden = {};
+  state.view = view; if(id!==undefined) state.formId = id;
+  state.sel = null; state.menu = null; state.panel = null; state.confirmDel = null;
+  if(view==='fill'){ state.page=0; state.step=0; state.hist=[]; state.answers={}; state.bad={}; state.done=false; }
+  if(view==='responses'){ state.rows = null; store.watchSubs(state.formId, rows=>{ state.rows = rows; if(state.view==='responses') render(); }); }
+  else store.stopWatch();
+  if(view==='fill' && state.formId){
+    const want = 'form-' + state.formId;
+    if(readLink().token !== want){
+      if(STANDALONE) swapUrl('?form=' + state.formId); else location.hash = want;
+    }
+    state.hidden = hiddenValues(form());
+  } else if(location.hash || location.search){
+    if(!swapUrl(location.pathname) && location.hash) location.hash = '';
+  }
+  render();
+}
+function swapUrl(to){
+  try{ if(history.replaceState){ history.replaceState(null, '', to); return true; } }catch(e){}
+  return false;
+}
+function pagesOf(f){
+  const out = [[]];
+  f.blocks.forEach(b=>{ if(b.type==='page') out.push([]); else out[out.length-1].push(b); });
+  return out.filter((p,i)=> p.length || i===0);
+}
+function themeVars(f){
+  const t = f.theme;
+  return `--f-accent:${t.accent};--f-r:${Math.min(Number(t.radius)||0,16)}px;--f-font:${FONTS[t.font]||FONTS.sans}`;
+}
+
+/* ---------- conditional logic ---------- */
+const OPS = {
+  pick:[['is','is'],['is_not','is not'],['empty','is empty'],['not_empty','is answered']],
+  num:[['is','is'],['is_not','is not'],['gt','is more than'],['lt','is less than'],['empty','is empty'],['not_empty','is answered']],
+  text:[['is','is'],['is_not','is not'],['contains','contains'],['empty','is empty'],['not_empty','is answered']],
+};
+const DOS = [['jump','jump to'],['show','show'],['hide','hide'],['submit','submit the form']];
+function opKind(t){
+  if(t==='choice'||t==='dropdown'||t==='checkboxes') return 'pick';
+  if(t==='rating'||t==='scale'||t==='number') return 'num';
+  return 'text';
+}
+function rules(f){ return f.logic || (f.logic = []); }
+function fields(f){ return f.hidden || (f.hidden = []); }
+const HIDDEN_PREFIX = 'hidden:';
+function whenOf(r, f, answers){
+  const w = String(r.when||'');
+  if(w.startsWith(HIDDEN_PREFIX)) return {kind:'text', v:(state.hidden||{})[w.slice(HIDDEN_PREFIX.length)]};
+  const b = f.blocks.find(x=>x.id===r.when);
+  return b ? {kind:opKind(b.type), v:answers[b.id], b} : null;
+}
+function truthy(r, f, answers){
+  const w = whenOf(r, f, answers); if(!w) return false;
+  const v = w.v;
+  const has = !(v===undefined || v===null || v==='' || (Array.isArray(v) && !v.length));
+  if(r.op==='empty') return !has;
+  if(r.op==='not_empty') return has;
+  if(!has) return false;
+  const kind = w.kind;
+  if(kind==='pick'){
+    const hit = Array.isArray(v) ? v.includes(r.value) : v===r.value;
+    return r.op==='is_not' ? !hit : hit;
+  }
+  if(kind==='num'){
+    const n = Number(v), m = Number(r.value);
+    if(Number.isNaN(m)) return false;
+    if(r.op==='gt') return n > m;
+    if(r.op==='lt') return n < m;
+    return r.op==='is_not' ? n !== m : n === m;
+  }
+  const s = String(v).toLowerCase(), q = String(r.value==null?'':r.value).toLowerCase();
+  if(r.op==='contains') return s.includes(q);
+  return r.op==='is_not' ? s !== q : s === q;
+}
+function visible(b, f, answers){
+  const rs = rules(f).filter(r=>r.target===b.id && (r.do==='show' || r.do==='hide'));
+  if(!rs.length) return true;
+  if(rs.some(r=>r.do==='hide' && truthy(r,f,answers))) return false;
+  const shows = rs.filter(r=>r.do==='show');
+  return shows.length ? shows.some(r=>truthy(r,f,answers)) : true;
+}
+function jumpFrom(pageBlocks, f, answers){
+  const ids = new Set(pageBlocks.map(b=>b.id));
+  return rules(f).find(r=>(r.do==='jump'||r.do==='submit')
+    && (ids.has(r.when) || String(r.when).startsWith(HIDDEN_PREFIX))
+    && truthy(r,f,answers)) || null;
+}
+
+/* ---------- hidden fields ----------
+   The artifact viewer hands the page a plain #anchor only — a real query
+   string never arrives — so values ride in the fragment as ~key.value,
+   restricted to the characters the host passes through. */
+const SAFE = /[^A-Za-z0-9._~-]+/g;
+const safe = s => String(s==null?'':s).trim().replace(/\s+/g,'-').replace(SAFE,'');
+const fieldName = s => String(s||'').trim().replace(/\s+/g,'_').replace(SAFE,'').slice(0,40);
+/* Hosted as a plain page (a repo, a static host) the whole URL arrives intact,
+   so links are ordinary query strings. Inside the artifact viewer only the
+   fragment survives, hence the ~name.value form. */
+const STANDALONE = !(window.claude && window.claude.use);
+function linkFor(f, values){
+  const base = location.origin + location.pathname;
+  if(STANDALONE){
+    const q = new URLSearchParams();
+    q.set('form', f.id);
+    fields(f).forEach(h=>{ const v = (values||{})[h.name]; if(v) q.set(h.name, String(v).trim()); });
+    return base + '?' + q.toString();
+  }
+  return base + '#form-' + f.id + fields(f).map(h=>{
+    const v = safe((values||{})[h.name]);
+    return v ? '~' + h.name + '.' + v : '';
+  }).join('');
+}
+function readLink(){
+  const out = {token:'', values:{}};
+  const parts = (location.hash||'').replace(/^#/,'').split('~');
+  out.token = parts[0];
+  parts.slice(1).forEach(p=>{
+    const i = p.indexOf('.');
+    if(i > 0) out.values[p.slice(0,i)] = p.slice(i+1);
+  });
+  try{
+    const q = new URLSearchParams(location.search);
+    const qf = q.get('form');
+    if(qf && !out.token) out.token = 'form-' + qf;
+    q.forEach((v,k)=>{ if(k!=='form' && !(k in out.values)) out.values[k] = v; });
+  }catch(e){}
+  return out;
+}
+function hiddenValues(f){
+  const link = readLink();
+  const out = {};
+  fields(f).forEach(h=>{
+    const v = (state.testHidden||{})[h.name] != null && (state.testHidden||{})[h.name] !== ''
+      ? state.testHidden[h.name] : link.values[h.name];
+    if(v !== undefined && v !== '') out[h.name] = String(v);
+  });
+  return out;
+}
+function pageOfBlock(f, id){
+  let p = 0;
+  for(const b of f.blocks){ if(b.type==='page'){ p++; continue; } if(b.id===id) return p; }
+  return p;
+}
+function liveBlocks(pageBlocks, f){ return pageBlocks.filter(b=>visible(b,f,state.answers)); }
+
+/* ---------- answer piping ----------
+   A question gets a short, stable ref the first time it is referenced, so
+   renaming the question later does not break the reference. "@name" in any
+   later label is replaced by that answer while the form is being filled. */
+const slug = s => String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,24);
+function ensureRef(b, f){
+  if(b.ref) return b.ref;
+  const base = slug(b.label) || b.type.replace(/_/g,'');
+  const taken = new Set(f.blocks.filter(x=>x.ref).map(x=>x.ref));
+  let r = base, n = 2;
+  while(taken.has(r)) r = base + (n++);
+  b.ref = r;
+  return r;
+}
+function pipe(text, f){
+  if(!text || String(text).indexOf('@') < 0) return text || '';
+  return String(text).replace(/@([a-z0-9_]+)/gi, (whole, ref) => {
+    const b = (f.blocks||[]).find(x => x.ref === ref);
+    if(!b) return whole;                       // not a reference; leave it alone
+    const v = state.answers[b.id];
+    if(v===undefined || v===null || v==='' || (Array.isArray(v) && !v.length)) return '';
+    return cellText(b, {answers: state.answers});
+  }).replace(/[ 	]{2,}/g,' ').trim();
+}
+
+/* ---------- the one-question runner ----------
+   Both runners read the same block list. Layout blocks ride along with the
+   question that follows them, so a heading never gets a screen of its own. */
+function stepsOf(f){
+  const out = []; let lead = [];
+  f.blocks.forEach(b => {
+    if(b.type === 'page') return;
+    if(!visible(b, f, state.answers)) return;
+    if(isInput(b.type)){ out.push({lead, q:b}); lead = []; }
+    else lead.push(b);
+  });
+  if(lead.length) out.push({lead, q:null});
+  return out.length ? out : [{lead:[], q:null}];
+}
+function stepForPage(f, steps, page){
+  const i = steps.findIndex(s => s.q && pageOfBlock(f, s.q.id) === page);
+  return i < 0 ? steps.length - 1 : i;
+}
+function validateOne(b){
+  state.bad = {};
+  if(!b || !b.required) return true;
+  const v = state.answers[b.id];
+  const empty = v===undefined || v===null || v==='' || (Array.isArray(v) && !v.length);
+  if(empty) state.bad[b.id] = 'This question needs an answer.';
+  else if(b.type==='email' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) state.bad[b.id] = 'Check the email address.';
+  return !state.bad[b.id];
+}
+function advanceStep(){
+  const f = form(), steps = stepsOf(f);
+  const cur = steps[Math.min(state.step, steps.length-1)];
+  if(cur.q && !validateOne(cur.q)){ render(); return; }
+  const here = cur.q ? cur.q.id : null;
+  const r = rules(f).find(x => (x.do==='jump' || x.do==='submit')
+    && (x.when === here || String(x.when).startsWith(HIDDEN_PREFIX))
+    && truthy(x, f, state.answers));
+  if(r && r.do === 'submit'){ send(); return; }
+  // "jump to page 3" in this runner means its first question
+  let next = r ? stepForPage(f, steps, Number(r.page)||0) : state.step + 1;
+  if(r && next === state.step) next = state.step + 1;
+  if(next > steps.length - 1){ send(); return; }
+  state.hist.push(state.step); state.step = next;
+  window.scrollTo({top:0, behavior:'smooth'});
+  render();
+  const field = document.querySelector('.q input.fi, .q textarea.fi');
+  if(field) field.focus();
+}
+
+
+function accountBit(){
+  if(!store.ready) return `<span class="pill">loading…</span>`;
+  if(!store.sb) return `<span class="pill" title="No Supabase project configured">this device</span>`;
+  if(!store.user) return `<button class="btn" data-act="account">${I.at}Sign in</button>`;
+  return `<button class="btn" data-act="account" title="${esc(store.user.email||'')}"><span class="pill live">signed in</span></button>`;
+}
+
+/* ============================ render: shell ============================ */
+function render(){
+  const f = form();
+  // a link naming a form this visitor cannot see says so, rather than
+  // dropping them on a workspace that is not theirs
+  if(state.missing && !store.forms[state.missing]){
+    bar.innerHTML = renderBar(); stage.innerHTML = renderMissing();
+    layer.querySelectorAll('.panel,.scrim').forEach(n=>n.remove());
+    return;
+  }
+  if(state.view!=='home' && !f && store.ready){ state.view='home'; state.formId=null; }
+  bar.innerHTML = renderBar();
+  stage.innerHTML =
+    state.view==='home' ? renderHome() :
+    state.view==='build' ? renderBuild() :
+    state.view==='fill' ? renderFill() :
+    state.view==='responses' ? renderResponses() : '';
+  layer.querySelectorAll('.panel,.scrim').forEach(n=>n.remove());
+  if(state.panel) renderPanel();
+  if(state.view==='build') afterBuild();
+}
+function renderMissing(){
+  return `<div class="wrap"><div class="empty" style="margin-top:var(--sp-8)">
+    <strong>This form is not available</strong>
+    It may be a draft, or the link may be wrong. If you were sent it, ask whoever
+    shared it to publish the form.</div></div>`;
+}
+function renderBar(){
+  const f = form();
+  if(state.view==='home' || !f){
+    return `<div class="mark"><i>水</i>Suisei</div><div class="crumb"></div>
+      <div class="tools">${accountBit()}</div>`;
+  }
+  const tabs = `<div class="seg hide-sm">
+      <button data-act="tab" data-v="build" aria-selected="${state.view==='build'}">Build</button>
+      <button data-act="tab" data-v="responses" aria-selected="${state.view==='responses'}">Responses</button>
+    </div>`;
+  if(state.view==='fill'){
+    return `<div class="mark"><i>水</i>Suisei</div><div class="crumb"><span class="sep">/</span><span>${esc(f.title)}</span></div>
+      <div class="tools"><button class="btn" data-act="exit-fill">${I.back}<span class="hide-sm">Back to editor</span></button></div>`;
+  }
+  return `<div class="mark"><i>水</i>Suisei</div>
+    <div class="crumb"><span class="sep">/</span>${f.emoji?emojiImg(f.emoji,"crumbicon"):""}<input id="ftitle-bar" value="${esc(f.title)}" data-bind="title" aria-label="Form name"></div>
+    ${tabs}
+    <div class="tools">
+      ${accountBit()}
+      <button class="btn" data-act="customize" title="Customize">${I.paint}<span class="hide-sm">Customize</span></button>
+      <button class="btn" data-act="preview">${I.eye}<span class="hide-sm">Preview</span></button>
+      <button class="btn primary" data-act="share">${I.share}Share</button>
+    </div>`;
+}
+
+/* ============================ render: home ============================ */
+function renderHome(){
+  const list = Object.values(store.forms).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  const cards = list.map(f=>{
+    const n = store.countFor(f.id);
+    const qs = f.blocks.filter(b=>isInput(b.type)).length;
+    const pages = pagesOf(f).length;
+    return `<div class="card">
+      <div class="row">
+        <h3 data-act="open" data-id="${f.id}" style="cursor:pointer;flex:1;min-width:0">${f.emoji?emojiImg(f.emoji,"cardicon"):""}${esc(f.title)}</h3>
+        <button class="x" data-act="del-form" data-id="${f.id}">${state.confirmDel===f.id?'Delete?':'Remove'}</button>
+      </div>
+      <div class="strip"><i style="width:${Math.min(100, n*8)}%;background:${f.theme.accent}"></i></div>
+      <div class="meta"><span>${n} response${n===1?'':'s'}</span><span>·</span><span>${qs} question${qs===1?'':'s'}</span>${pages>1?`<span>·</span><span>${pages} pages</span>`:''}</div>
+      <div class="row" style="margin-top:2px">
+        <button class="btn" style="padding:4px 8px" data-act="open" data-id="${f.id}">Edit</button>
+        <button class="btn" style="padding:4px 8px" data-act="open-fill" data-id="${f.id}">Open form</button>
+      </div>
+    </div>`;
+  }).join('');
+  const empty = `<div class="empty"><strong>No forms yet</strong>Start blank and press <code>/</code> to drop in a question, or pick a template.</div>`;
+  return `<div class="wrap">
+    <div class="lede">
+      <div><h1>My workspace</h1><p>Write a form the way you write a document. Every block is a question.</p></div>
+      <button class="btn primary" data-act="new" data-t="blank">${I.plus}New form</button>
+    </div>
+    ${list.length?`<div class="grid">${cards}</div>`:empty}
+    <div class="tpl">
+      <span class="btn" style="padding:7px 0;color:var(--faint)">Start from</span>
+      <button data-act="new" data-t="contact">${I.at} Contact form</button>
+      <button data-act="new" data-t="rsvp">${I.cal} Event RSVP</button>
+      <button data-act="new" data-t="feedback">${I.star} Product feedback</button>
+      <button data-act="new" data-t="job">${I.file} Job application</button>
+    </div>
+  </div>`;
+}
+
+/* ============================ render: builder ============================ */
+function renderBuild(){
+  const f = form();
+  const pages = [];
+  let page = 1;
+  const body = f.blocks.map((b,i)=>{
+    let shell;
+    if(b.type==='page'){ page++; shell = blockShell(b, i, `<div class="pagebreak">Page ${page}</div>`); }
+    else if(b.type==='divider') shell = blockShell(b, i, `<div class="rule"></div>`);
+    else {
+      const req = b.required ? `<span class="req" title="Required">*</span>` : '';
+      const label = `<div style="display:flex;align-items:flex-start"><textarea class="lbl" rows="1" data-block="${b.id}" data-field="label"
+          placeholder="${isInput(b.type)?'Ask a question…':(b.type==='text'?"Write text, or press '/' for a block":'Heading')}">${esc(b.label)}</textarea>${req}</div>`;
+      shell = blockShell(b, i, label + (isInput(b.type)?`<div class="field">${fieldPreview(b)}</div>`:''));
+    }
+    return shell + rules(f).filter(r=>r.when===b.id).map(r=>ruleCard(r,f)).join('');
+  }).join('');
+  return `<div class="canvasform" data-bg="${f.theme.bg}" data-align="${f.theme.align}" style="${themeVars(f)};min-height:calc(100vh - 52px)">
+    <div class="col">
+      <button class="formicon" data-act="emoji" title="${f.emoji?'Change the icon':'Add an icon'}">${
+        f.emoji ? emojiImg(f.emoji,'') : '<span class="addicon">+ Icon</span>'}</button>
+      <textarea class="ftitle" rows="1" data-bind="title" placeholder="Form title">${esc(f.title)}</textarea>
+      <div class="blocks" id="blocks">${body}</div>
+      <button class="addopt" style="margin-top:14px" data-act="add-block" data-at="${f.blocks.length}">+ Add a block</button>
+      ${fields(f).length?`<div class="hfrow"><span class="lg">Hidden fields</span>${fields(f).map(h=>`<code>@${esc(h.name)}</code>`).join('')}<button data-act="share">Edit</button></div>`:''}
+    </div>
+  </div>`;
+}
+function blockShell(b, i, inner){
+  const sel = state.sel===b.id;
+  const t = TYPES[b.type];
+  const toolbar = sel ? `<div class="toolbar">
+      <button data-act="type-menu" data-id="${b.id}">${I[t.i]}${t.n}</button>
+      ${isInput(b.type)?`<div class="div"></div><button data-act="req" data-id="${b.id}" class="${b.required?'on':''}">Required</button>
+      <button data-act="add-logic" data-id="${b.id}" title="Add a rule">${I.branch}Logic</button>`:''}
+      <div class="div"></div>
+      <button data-act="del-block" data-id="${b.id}" title="Delete">${I.trash}</button>
+    </div>` : '';
+  return `<div class="blk${sel?' sel':''}" data-id="${b.id}" data-type="${b.type}" data-i="${i}">
+    ${toolbar}
+    <div class="gutter">
+      <button data-act="add-block" data-at="${i+1}" title="Insert below">${I.plus}</button>
+      <button class="grip" draggable="true" data-id="${b.id}" title="Drag to move">${I.grip}</button>
+    </div>
+    ${inner}
+  </div>`;
+}
+function shortLabel(b){
+  const s = (b.label||'').trim() || TYPES[b.type].n;
+  return s.length>30 ? s.slice(0,29)+'…' : s;
+}
+function ruleCard(r, f){
+  const isHid = String(r.when||'').startsWith(HIDDEN_PREFIX);
+  const wb = isHid ? null : f.blocks.find(x=>x.id===r.when);
+  if(!isHid && !wb) return '';
+  const kind = isHid ? 'text' : opKind(wb.type);
+  const needsValue = r.op!=='empty' && r.op!=='not_empty';
+  const sel = (k, opts) => `<select data-rule="${r.id}" data-k="${k}">${opts}</select>`;
+  const val = !needsValue ? '' : (kind==='pick'
+    ? sel('value', (wb.options||[]).map(o=>`<option value="${o.id}"${r.value===o.id?' selected':''}>${esc(o.text||'Untitled option')}</option>`).join(''))
+    : `<input data-rule="${r.id}" data-k="value" value="${esc(r.value==null?'':r.value)}" placeholder="${kind==='num'?'0':'value'}" style="width:108px">`);
+  const pages = pagesOf(f);
+  const target = r.do==='jump'
+    ? sel('page', pages.map((p,i)=>`<option value="${i}"${Number(r.page)===i?' selected':''}>Page ${i+1}</option>`).join(''))
+    : (r.do==='show'||r.do==='hide')
+      ? sel('target', f.blocks.filter(x=>x.type!=='page'&&x.id!==r.when).map(x=>`<option value="${x.id}"${r.target===x.id?' selected':''}>${esc(shortLabel(x))}</option>`).join(''))
+      : '';
+  return `<div class="logic">
+    <span class="lg">When</span>
+    ${sel('when', `<optgroup label="Questions">${f.blocks.filter(x=>isInput(x.type)).map(q=>`<option value="${q.id}"${q.id===r.when?' selected':''}>${esc(shortLabel(q))}</option>`).join('')}</optgroup>`
+      + (fields(f).length?`<optgroup label="Hidden fields">${fields(f).map(h=>`<option value="${HIDDEN_PREFIX}${esc(h.name)}"${r.when===HIDDEN_PREFIX+h.name?' selected':''}>@${esc(h.name)}</option>`).join('')}</optgroup>`:''))}
+    ${sel('op', OPS[kind].map(([v,n])=>`<option value="${v}"${r.op===v?' selected':''}>${n}</option>`).join(''))}
+    ${val}
+    <span class="lg">Then</span>
+    ${sel('do', DOS.map(([v,n])=>`<option value="${v}"${r.do===v?' selected':''}>${n}</option>`).join(''))}
+    ${target}
+    <button class="rm" data-act="del-logic" data-id="${r.id}" title="Remove rule">×</button>
+  </div>`;
+}
+function fieldPreview(b){
+  const t = b.type;
+  if(t==='long_text') return `<textarea class="fi" rows="3" data-block="${b.id}" data-field="placeholder" placeholder="Type your answer…">${esc(b.placeholder)}</textarea>`;
+  if(t==='choice'||t==='checkboxes'||t==='dropdown'){
+    const sq = t==='checkboxes';
+    const rows = b.options.map((o,k)=>`<div class="opt${sq?' sq':''}">
+        <span class="mk"></span>
+        <input value="${esc(o.text)}" placeholder="Option ${k+1}" data-block="${b.id}" data-field="opt" data-opt="${o.id}">
+        <span class="k">${KEYS[k]||''}</span>
+        <button class="rm" data-act="del-opt" data-id="${b.id}" data-opt="${o.id}" title="Remove">×</button>
+      </div>`).join('');
+    return `<div class="opts">${rows}<button class="addopt" data-act="add-opt" data-id="${b.id}">+ Add option</button></div>`;
+  }
+  if(t==='rating') return `<div class="stars">${Array.from({length:b.max},(_,k)=>`<span class="on">${I.star}</span>`).join('')}
+      <button class="addopt" style="padding:0 6px" data-act="rate-less" data-id="${b.id}">−</button>
+      <button class="addopt" style="padding:0 6px" data-act="rate-more" data-id="${b.id}">+</button></div>`;
+  if(t==='scale') return `<div class="scale">${Array.from({length:b.max},(_,k)=>`<span>${k+1}</span>`).join('')}
+      <button class="addopt" style="padding:0 6px" data-act="rate-less" data-id="${b.id}">−</button>
+      <button class="addopt" style="padding:0 6px" data-act="rate-more" data-id="${b.id}">+</button></div>
+      <div class="scale-ends"><input value="${esc(b.left)}" data-block="${b.id}" data-field="left" placeholder="Left label"><input value="${esc(b.right)}" data-block="${b.id}" data-field="right" placeholder="Right label"></div>`;
+  if(t==='file') return `<div class="drop">Drop a file or click to upload</div>`;
+  if(t==='date') return `<input class="fi" type="date" disabled style="max-width:220px">`;
+  return `<input class="fi" value="${esc(b.placeholder)}" data-block="${b.id}" data-field="placeholder" placeholder="Placeholder text">`;
+}
+function afterBuild(){
+  document.querySelectorAll('textarea.lbl,.ftitle').forEach(fit);
+  if(state.focus){
+    const {id, field, opt} = state.focus;
+    const sel = opt ? `[data-block="${id}"][data-opt="${opt}"]` : `[data-block="${id}"][data-field="${field}"]`;
+    const el = document.querySelector(sel);
+    if(el){ el.focus(); const n = el.value.length; try{ el.setSelectionRange(n,n) }catch(e){} }
+    state.focus = null;
+  }
+}
+function fit(t){ t.style.height='auto'; t.style.height = t.scrollHeight+'px'; }
+/* Zen Kaku's metrics differ from the fallback, so every auto-sized label is
+   measured again once the real face has swapped in. */
+if(document.fonts && document.fonts.ready){
+  document.fonts.ready.then(()=>{ document.querySelectorAll('textarea.lbl,.ftitle').forEach(fit); });
+}
+
+/* ============================ render: fill ============================ */
+function renderFill(){
+  const f = form();
+  const t = f.theme;
+  const stepped = t.runner === 'step';
+  const pages = pagesOf(f);
+  const steps = stepped ? stepsOf(f) : null;
+  const total = stepped ? steps.length : pages.length;
+  const at = stepped ? state.step : state.page;
+  const toggle = `<button class="runner" data-act="runner">${stepped ? 'Show every question at once' : 'Answer one question at a time'}</button>`;
+  const shell = inner => `<div class="canvasform" data-bg="${t.bg}" data-align="${t.align}" data-runner="${stepped?'step':'grid'}" style="${themeVars(f)};min-height:calc(100vh - 52px)">
+      ${total>1 && !state.done?`<div class="progress"><i style="width:${Math.round(at/total*100)}%"></i></div>`:''}
+      <div class="col">${inner}</div></div><div class="badge">Made with Suisei</div>`;
+  if(state.done){
+    return shell(`<div class="done"><div class="tick">${I.tick}</div><h2>${esc(pipe(t.thanks, f))}</h2>
+      <p>Your response has been recorded.</p>
+      <button class="btn ghost" data-act="again">Submit another response</button></div>`);
+  }
+  const hv = Object.keys(state.hidden||{});
+  const peek = ((store.editor || !store.sb) && hv.length)
+    ? `<div class="hfrow" style="margin:0 0 22px;padding:0;border:0">${hv.map(k=>`<code>@${esc(k)} = ${esc(state.hidden[k])}</code>`).join('')}<span class="lg">editors only</span></div>` : '';
+  const title = `${f.emoji?emojiImg(f.emoji,'formicon-read'):''}<h1 class="ftitle-read">${esc(f.title)}</h1>`;
+
+  if(stepped){
+    const cur = steps[Math.min(state.step, steps.length-1)];
+    const last = state.step >= steps.length-1;
+    return shell(`
+      ${state.step===0?title:''}
+      ${state.step===0?peek:''}
+      ${cur.lead.map(b=>renderQ(b)).join('')}
+      ${cur.q?renderQ(cur.q, true):''}
+      <div class="nav">
+        ${state.hist.length?`<button class="back" data-act="prev">${I.back} Back</button>`:''}
+        <button class="submit" data-act="next">${last?esc(t.submit):'OK'} ${I.arrow}</button>
+        <span class="counter">${state.step+1} / ${steps.length}</span>
+      </div>
+      ${toggle}`);
+  }
+
+  const first = state.page===0;
+  const last = state.page===pages.length-1;
+  return shell(`
+    ${first?title:''}
+    ${peek}
+    ${liveBlocks(pages[state.page], f).map(b=>renderQ(b)).join('')}
+    <div class="nav">
+      ${(!first||state.hist.length)?`<button class="back" data-act="prev">${I.back} Back</button>`:''}
+      <button class="submit" data-act="${last?'send':'next'}">${last?esc(t.submit):'Next'} ${I.arrow}</button>
+      ${pages.length>1?`<span class="counter">${state.page+1} / ${pages.length}</span>`:''}
+    </div>
+    ${toggle}`);
+}
+function renderQ(b, big){
+  const f = form();
+  const v = state.answers[b.id];
+  if(b.type==='h1') return `<h2 class="q-h1">${esc(pipe(b.label,f))}</h2>`;
+  if(b.type==='h2') return `<h3 class="q-h2">${esc(pipe(b.label,f))}</h3>`;
+  if(b.type==='text') return `<p class="q-text">${esc(pipe(b.label,f))}</p>`;
+  if(b.type==='divider') return `<div class="rule"></div>`;
+  const bad = state.bad[b.id];
+  const head = `<div class="ql${big?' ql-xl':''}">${esc(pipe(b.label,f)||'Untitled question')}${b.required?'<span class="req">*</span>':''}</div>`;
+  let ctl = '';
+  if(b.type==='long_text') ctl = `<textarea class="fi" rows="3" data-a="${b.id}" placeholder="${esc(b.placeholder)}">${esc(v||'')}</textarea>`;
+  else if(b.type==='choice'||b.type==='checkboxes'){
+    const multi = b.type==='checkboxes';
+    ctl = `<div class="opts">${b.options.map((o,k)=>{
+      const on = multi ? (Array.isArray(v)&&v.includes(o.id)) : v===o.id;
+      return `<button class="opt${multi?' sq':''}${on?' pick':''}" data-act="pick" data-id="${b.id}" data-opt="${o.id}">
+        <span class="mk">${on?I.tick:''}</span><span style="flex:1;min-width:0">${esc(o.text||'Option '+(k+1))}</span><span class="k">${KEYS[k]||''}</span></button>`;
+    }).join('')}</div>`;
+  }
+  else if(b.type==='dropdown') ctl = `<select class="fi" data-a="${b.id}" style="max-width:340px"><option value="">Select…</option>${b.options.map(o=>`<option value="${o.id}"${v===o.id?' selected':''}>${esc(o.text)}</option>`).join('')}</select>`;
+  else if(b.type==='rating') ctl = `<div class="stars">${Array.from({length:b.max},(_,k)=>`<button data-act="rate" data-id="${b.id}" data-v="${k+1}" class="${v>=k+1?'on':''}" aria-label="${k+1} of ${b.max}">${I.star}</button>`).join('')}</div>`;
+  else if(b.type==='scale') ctl = `<div class="scale">${Array.from({length:b.max},(_,k)=>`<button data-act="rate" data-id="${b.id}" data-v="${k+1}" class="${v===k+1?'on':''}">${k+1}</button>`).join('')}</div>
+      <div class="scale-ends"><span>${esc(b.left)}</span><span>${esc(b.right)}</span></div>`;
+  else if(b.type==='file') ctl = `<label class="drop" style="display:block;cursor:pointer">${v?esc(v):'Drop a file or click to upload'}<input type="file" data-a="${b.id}" hidden></label>`;
+  else {
+    const types = {number:'number',email:'email',phone:'tel',url:'url',date:'date'};
+    ctl = `<input class="fi" type="${types[b.type]||'text'}" data-a="${b.id}" value="${esc(v||'')}" placeholder="${esc(b.placeholder)}"${b.type==='date'?' style="max-width:220px"':''}>`;
+  }
+  return `<div class="q${bad?' bad':''}" data-q="${b.id}">${head}${ctl}${bad?`<div class="err">${esc(bad)}</div>`:''}</div>`;
+}
+
+/* ============================ render: responses ============================ */
+function renderResponses(){
+  const f = form();
+  const rows = (state.rows||[]).slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  const cols = f.blocks.filter(b=>isInput(b.type));
+  if(state.rows===null) return `<div class="wrap"><div class="empty">Loading responses…</div></div>`;
+  if(!rows.length) return `<div class="wrap">
+    <div class="lede"><div><h1>Responses</h1><p>Nothing yet. Open the form and submit one to see it land here.</p></div>
+    <button class="btn ghost" data-act="preview">${I.eye}Open the form</button></div>
+    <div class="empty"><strong>No responses yet</strong>Answers show up here the moment someone submits.</div></div>`;
+  const last = new Date(rows[0].createdAt);
+  const stats = `<div class="stats">
+    <div class="stat"><b>${rows.length}</b><span>Responses</span></div>
+    <div class="stat"><b>${cols.length}</b><span>Questions</span></div>
+    <div class="stat"><b>${fmtShort(last)}</b><span>Latest</span></div>
+    <div class="stat"><b>${Math.round(rows.reduce((s,r)=>s+answered(r,cols),0)/rows.length/Math.max(cols.length,1)*100)}%</b><span>Avg completion</span></div>
+  </div>`;
+  const bds = cols.filter(b=>['choice','checkboxes','dropdown','rating','scale'].includes(b.type)).slice(0,4).map(b=>{
+    let items;
+    if(b.type==='rating'||b.type==='scale'){
+      items = Array.from({length:b.max},(_,k)=>({label:String(k+1), n:rows.filter(r=>r.answers[b.id]===k+1).length}));
+    } else {
+      items = b.options.map(o=>({label:o.text||'Untitled', n:rows.filter(r=>{const v=r.answers[b.id]; return Array.isArray(v)?v.includes(o.id):v===o.id;}).length}));
+    }
+    const max = Math.max(1, ...items.map(i=>i.n));
+    return `<div class="bd"><h4>${esc(b.label||'Untitled question')}</h4>
+      ${items.map(i=>`<div class="r"><span>${esc(i.label)}</span><b>${i.n}</b><div class="track"><i style="width:${Math.round(i.n/max*100)}%;background:${f.theme.accent}"></i></div></div>`).join('')}</div>`;
+  }).join('');
+  const hcols = fields(f);
+  const cell = v => `<td title="${esc(v)}">${esc(v)||'<span style="color:var(--faint)">—</span>'}</td>`;
+  const head = `<tr><th>Submitted</th>${cols.map(b=>`<th>${esc(b.label||TYPES[b.type].n)}</th>`).join('')}${hcols.map(h=>`<th>@${esc(h.name)}</th>`).join('')}</tr>`;
+  const body = rows.map(r=>`<tr><td class="when">${fmt(new Date(r.createdAt))}${r.local?' <span class="pill">local</span>':''}</td>${cols.map(b=>cell(cellText(b,r))).join('')}${hcols.map(h=>cell((r.hidden||{})[h.name]||'')).join('')}</tr>`).join('');
+  return `<div class="wrap">
+    <div class="lede"><div><h1>Responses</h1><p>${rows.length} submission${rows.length===1?'':'s'} to “${esc(f.title)}”.</p></div>
+      <div class="tools">
+        <button class="btn ghost" data-act="copy-csv">${I.copy}Copy CSV</button>
+        ${store.downloads?`<button class="btn ghost" data-act="dl-csv">${I.down}Download CSV</button>`:''}
+      </div></div>
+    ${stats}${bds?`<div class="breakdown">${bds}</div>`:''}
+    <div class="tablewrap"><table><thead>${head}</thead><tbody>${body}</tbody></table></div>
+  </div>`;
+}
+function answered(r, cols){ return cols.filter(b=>{const v=r.answers[b.id]; return Array.isArray(v)?v.length:(v!==undefined&&v!=='')}).length; }
+function cellText(b, r){
+  const v = r.answers[b.id];
+  if(v===undefined||v===null||v==='') return '';
+  if(b.type==='choice'||b.type==='dropdown'){ const o=(b.options||[]).find(o=>o.id===v); return o?o.text:String(v); }
+  if(b.type==='checkboxes'){ return (Array.isArray(v)?v:[]).map(id=>{const o=(b.options||[]).find(o=>o.id===id); return o?o.text:id;}).join(', '); }
+  if(b.type==='rating') return v+' / '+b.max;
+  return String(v);
+}
+const pad = n => String(n).padStart(2,'0');
+const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+function fmtShort(d){
+  const mins = Math.round((Date.now()-d.getTime())/60000);
+  if(mins<1) return 'just now'; if(mins<60) return mins+'m ago';
+  const h = Math.round(mins/60); if(h<24) return h+'h ago';
+  return Math.round(h/24)+'d ago';
+}
+function csv(){
+  const f = form(); const cols = f.blocks.filter(b=>isInput(b.type)); const hcols = fields(f);
+  const rows = (state.rows||[]).slice().sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+  const q = s => '"' + String(s==null?'':s).replace(/"/g,'""') + '"';
+  return [['Submitted'].concat(cols.map(b=>b.label||TYPES[b.type].n), hcols.map(h=>'@'+h.name)).map(q).join(',')]
+    .concat(rows.map(r=>[fmt(new Date(r.createdAt))]
+      .concat(cols.map(b=>cellText(b,r)), hcols.map(h=>(r.hidden||{})[h.name]||''))
+      .map(q).join(','))).join('\n');
+}
+
+/* ============================ panels ============================ */
+function emojiGrid(){
+  const q = (state.emojiQ||'').trim().toLowerCase();
+  const hits = EMOJI.list.filter(e => !q || e.n.toLowerCase().includes(q));
+  if(!hits.length) return `<div class="none">No icon matches “${esc(q)}”</div>`;
+  return hits.map(e => `<button data-act="pick-emoji" data-p="${esc(e.p)}" title="${esc(e.n)}">${emojiImg(e.p,'')}</button>`).join('');
+}
+function renderPanel(){
+  const f = form();
+  // the account panel belongs to the app, not to a form, so it opens on the
+  // workspace too
+  if(!f && state.panel !== 'account') return;
+  const scrim = document.createElement('div'); scrim.className='scrim'; scrim.dataset.act='close-panel';
+  const p = document.createElement('div'); p.className='panel';
+  if(state.panel==='emoji'){
+    p.innerHTML = `<h4>Form icon</h4>
+      <div class="fld"><input type="text" id="emoji-q" placeholder="Search ${EMOJI.list.length} icons" aria-label="Search icons" value="${esc(state.emojiQ||'')}"></div>
+      <div class="egrid" id="emoji-grid">${emojiGrid()}</div>
+      ${f && f.emoji?`<button class="btn ghost" style="width:100%;justify-content:center;margin-top:var(--sp-3)" data-act="clear-emoji">Remove the icon</button>`:''}
+      <p class="note" style="margin-top:var(--sp-3)">Fluent Emoji by Microsoft, MIT licensed.</p>`;
+  } else if(state.panel==='account'){
+    const signedIn = !!store.user;
+    p.innerHTML = `<h4>${signedIn?'Signed in':'Sign in'}</h4>
+      ${signedIn
+        ? `<p class="note">You are signed in as <strong>${esc(store.user.email||'')}</strong>. Forms you build are saved to your project, and only you can read the responses.</p>
+           <button class="btn ghost" style="width:100%;justify-content:center;margin-top:var(--sp-3)" data-act="signout">Sign out</button>`
+        : `<p class="note">Signing in is what lets a form leave this device. Until then your forms stay in this browser, while answers people send still reach the project.</p>
+           <button class="btn ghost" style="width:100%;justify-content:center;margin-top:var(--sp-3)" data-act="google">${I.google}Continue with Google</button>`}
+      ${store.lastError?`<p class="note" style="margin-top:var(--sp-3);color:var(--warn)">Last error from the project: ${esc(store.lastError)}</p>`:''}`;
+  } else if(state.panel==='customize'){
+    const t = f.theme;
+    p.innerHTML = `<h4>Customize</h4>
+      <div class="fld"><label>Accent</label><div class="swatches">${ACCENTS.map(c=>`<button style="background:${c}" data-act="th" data-k="accent" data-v="${c}" aria-pressed="${t.accent===c}" aria-label="${c}"></button>`).join('')}</div></div>
+      <div class="fld"><label>Typeface</label><div class="chips">${['sans','serif','mono'].map(k=>`<button data-act="th" data-k="font" data-v="${k}" aria-pressed="${t.font===k}" style="font-family:${FONTS[k]}">${FONT_NAMES[k]}</button>`).join('')}</div></div>
+      <div class="fld"><label>Alignment</label><div class="chips">${['left','center'].map(k=>`<button data-act="th" data-k="align" data-v="${k}" aria-pressed="${t.align===k}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div></div>
+      <div class="fld"><label>Runner</label><div class="chips">${[['grid','All at once'],['step','One at a time']].map(([k,n])=>`<button data-act="th" data-k="runner" data-v="${k}" aria-pressed="${(t.runner||'grid')===k}">${n}</button>`).join('')}</div></div>
+      <div class="fld"><label>Background</label><div class="chips">${['auto','light','dark'].map(k=>`<button data-act="th" data-k="bg" data-v="${k}" aria-pressed="${t.bg===k}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div></div>
+      <div class="fld"><label>Corners</label><div class="chips">${[[2,'Sharp'],[10,'Soft'],[16,'Round']].map(([v,n])=>`<button data-act="th" data-k="radius" data-v="${v}" aria-pressed="${t.radius==v}">${n}</button>`).join('')}</div></div>
+      <div class="fld"><label>Submit button</label><input type="text" value="${esc(t.submit)}" data-th="submit"></div>
+      <div class="fld"><label>Thank-you message</label><input type="text" value="${esc(t.thanks)}" data-th="thanks"></div>`;
+  } else {
+    const hs = fields(f);
+    const rows = hs.map(h=>`<div class="hf">
+        <code title="@${esc(h.name)}">@${esc(h.name)}</code>
+        <input type="text" data-hf="${esc(h.name)}" value="${esc((state.testHidden||{})[h.name]||'')}" placeholder="test value" aria-label="Value for ${esc(h.name)}">
+        <button class="rm" data-act="del-field" data-name="${esc(h.name)}" title="Remove field">×</button>
+      </div>`).join('');
+    const live = !!f.published;
+    p.innerHTML = `<h4>Share this form</h4>
+      <div class="fld">
+        <div class="pubrow">
+          <span class="pill ${live?'live':''}">${live?'Live':'Draft'}</span>
+          <button class="btn ${live?'ghost':'primary'}" data-act="publish">${live?'Unpublish':'Publish'}</button>
+        </div>
+        <p class="note" style="margin-top:var(--sp-2)">${live
+          ? 'Anyone with the link can open this form and answer it.'
+          : 'While it is a draft the link opens nothing, for anyone but you, and no answer can be recorded against it.'}</p>
+      </div>
+      <div class="fld"><label>Form link</label><div class="link"><code id="sharelink">${esc(linkFor(f, state.testHidden))}</code><button class="btn ghost" data-act="copy-link">${I.copy}</button></div></div>
+      <p class="note">${STANDALONE
+        ? `Send this as it is. <code style="font-family:var(--mono)">?form=${f.id}</code> picks the form; the fields below ride along as ordinary query parameters.`
+        : `The fragment is what matters: anyone who opens this artifact with <code style="font-family:var(--mono)">#form-${f.id}</code> on the end lands straight on the form. If the copied address does not work from outside, take the artifact's own link and append the fragment.`}</p>
+      <div class="fld" style="margin-top:16px"><label>Hidden fields</label>
+        ${rows || '<p class="note" style="margin:0 0 8px">None yet. Add one to carry a value into every response — a campaign, a referrer, an account id.</p>'}
+        <div class="link" style="margin-top:8px"><input type="text" id="newfield" placeholder="utm_source" aria-label="New hidden field name"><button class="btn ghost" data-act="add-field">Add</button></div>
+        <p class="note" style="margin-top:8px">${STANDALONE
+          ? `Values travel as <code style="font-family:var(--mono)">?name=value</code>. Type a test value above and the link updates.`
+          : `Values travel in the link as <code style="font-family:var(--mono)">~name.value</code>, because this page only ever receives a plain fragment — a <code style="font-family:var(--mono)">?query=string</code> is stripped before it arrives. Type a test value above and the link updates; letters, digits, <code style="font-family:var(--mono)">. _ ~ -</code> survive the trip, spaces become hyphens.`}</p>
+      </div>
+      <div class="fld"><label>Who can answer</label>
+        <p class="note">${store.sb ? 'Anyone with the link can answer, signed in or not. Only you can read the responses.' : 'No project connected — responses stay in the browser that submitted them.'}</p></div>
+      <button class="btn primary" style="width:100%;justify-content:center" data-act="preview">${I.eye}Open the form</button>`;
+  }
+  layer.appendChild(scrim); layer.appendChild(p);
+}
+
+/* ============================ slash / type menu ============================ */
+function openMenu(kind, opts){
+  state.menu = Object.assign({kind, q:'', idx:0}, opts);
+  drawMenu();
+}
+function closeMenu(){ state.menu = null; layer.querySelectorAll('.menu').forEach(n=>n.remove()); }
+function menuItems(){
+  const m = state.menu || {};
+  const q = (m.q||'').toLowerCase();
+  if(m.kind === 'pipe'){
+    const f = form();
+    const upto = f.blocks.findIndex(x => x.id === m.blockId);
+    return f.blocks.slice(0, upto < 0 ? f.blocks.length : upto)
+      .filter(x => isInput(x.type))
+      .filter(x => !q || (x.label||'').toLowerCase().includes(q))
+      .map(x => ({k:x.id, n:x.label || TYPES[x.type].n, ic:TYPES[x.type].i, grp:'Earlier answers'}));
+  }
+  return Object.keys(TYPES)
+    .filter(k => !q || TYPES[k].n.toLowerCase().includes(q) || k.includes(q))
+    .map(k => ({k, n:TYPES[k].n, ic:TYPES[k].i, grp:TYPES[k].g}));
+}
+function drawMenu(){
+  layer.querySelectorAll('.menu').forEach(n=>n.remove());
+  const m = state.menu; if(!m) return;
+  const items = menuItems();
+  if(m.idx >= items.length) m.idx = Math.max(0, items.length-1);
+  const el = document.createElement('div');
+  el.className = 'menu canvasform';
+  const mf = form();
+  if(mf){ el.setAttribute('data-bg', mf.theme.bg); el.setAttribute('style', themeVars(mf)); }
+  let html = m.kind==='type' ? '' : `<input class="q" placeholder="${m.kind==='pipe'?'Search questions…':'Search blocks…'}" value="${esc(m.q)}" aria-label="Search blocks">`;
+  let grp = '';
+  items.forEach((it,i)=>{
+    if(it.grp!==grp){ grp = it.grp; html += `<div class="grp">${grp}</div>`; }
+    html += `<button class="it" data-act="pick-type" data-k="${it.k}" aria-selected="${i===m.idx}"><span class="ic">${I[it.ic]}</span>${esc(it.n)}</button>`;
+  });
+  if(!items.length) html = (m.kind==='type'?'':html) + `<div class="none">${m.kind==='pipe'?'No earlier question to reference':'No block matches “'+esc(m.q)+'”'}</div>`;
+  el.innerHTML = html;
+  layer.appendChild(el);
+  const r = m.rect;
+  const top = Math.min(window.innerHeight - 348, r.bottom + window.scrollY + 6);
+  el.style.top = Math.max(60, top) + 'px';
+  el.style.left = Math.max(10, Math.min(window.innerWidth - 284, r.left)) + 'px';
+  if(m.kind!=='type'){ const q = el.querySelector('.q'); if(q){ q.focus(); q.setSelectionRange(q.value.length,q.value.length); } }
+  const on = el.querySelector('[aria-selected="true"]'); if(on) on.scrollIntoView({block:'nearest'});
+}
+function applyPipe(srcId){
+  const f = form(), m = state.menu;
+  const src = f.blocks.find(x => x.id === srcId);
+  const tgt = f.blocks.find(x => x.id === m.blockId);
+  closeMenu();
+  if(!src || !tgt) return;
+  const ref = ensureRef(src, f);
+  const cut = tgt.label.lastIndexOf('@');
+  tgt.label = (cut < 0 ? tgt.label : tgt.label.slice(0, cut)) + '@' + ref + ' ';
+  store.saveForm(f); state.dirtyUntil = Date.now() + 4000;
+  state.sel = tgt.id; state.focus = {id:tgt.id, field:'label'};
+  render();
+}
+function applyType(k){
+  const f = form();
+  const m = state.menu;
+  if(m.kind === 'pipe'){ applyPipe(k); return; }
+  closeMenu();
+  if(m.kind==='type' || m.slash){
+    const b = f.blocks.find(x=>x.id===m.blockId);
+    const keep = m.slash ? '' : b.label;
+    const nb = block(k, keep);
+    nb.id = b.id;
+    f.blocks[f.blocks.indexOf(b)] = nb;
+    state.sel = nb.id; state.focus = {id:nb.id, field:'label'};
+  } else {
+    const nb = block(k, '');
+    f.blocks.splice(m.at, 0, nb);
+    state.sel = nb.id; state.focus = {id:nb.id, field:'label'};
+  }
+  store.saveForm(f); state.dirtyUntil = Date.now()+4000; render();
+}
+
+/* ============================ events ============================ */
+document.addEventListener('click', e=>{
+  const a = e.target.closest('[data-act]');
+  if(!a){
+    if(!e.target.closest('.menu')) closeMenu();
+    if(e.target.closest('.logic') || e.target.closest('.panel')) return;
+    if(state.view==='build'){
+      const blk = e.target.closest('.blk');
+      const id = blk ? blk.dataset.id : null;
+      if(id!==state.sel){
+        state.sel = id;
+        const t = e.target;
+        if(t.dataset && t.dataset.block) state.focus = {id:t.dataset.block, field:t.dataset.field, opt:t.dataset.opt};
+        render();
+      }
+    }
+    return; }
+  const act = a.dataset.act, f = form();
+  const dirty = ()=>{ state.dirtyUntil = Date.now()+4000; store.saveForm(f); };
+  switch(act){
+    case 'new': {
+      const t = a.dataset.t;
+      const nf = t==='blank' ? newForm() : TEMPLATES[t]();
+      store.saveForm(nf); go('build', nf.id); break;
+    }
+    case 'open': go('build', a.dataset.id); break;
+    case 'open-fill': go('fill', a.dataset.id); break;
+    case 'del-form': {
+      const id = a.dataset.id;
+      if(state.confirmDel!==id){ state.confirmDel = id; render(); setTimeout(()=>{ if(state.confirmDel===id){ state.confirmDel=null; render(); } }, 3500); }
+      else { store.deleteForm(id); state.confirmDel=null; render(); toast('Form removed'); }
+      break;
+    }
+    case 'tab': go(a.dataset.v); break;
+    case 'preview': state.panel=null; go('fill', state.formId); break;
+    case 'exit-fill': go('build', state.formId); break;
+    case 'emoji': state.panel = state.panel==='emoji'?null:'emoji'; state.emojiQ=''; render(); break;
+    case 'pick-emoji': { f.emoji = a.dataset.p; state.panel=null; dirty(); render(); break; }
+    case 'clear-emoji': { f.emoji = ''; state.panel=null; dirty(); render(); break; }
+    case 'account': state.panel = state.panel==='account'?null:'account'; render(); break;
+    case 'google': {
+      a.disabled = true;
+      store.signIn().then(r => { if(!r.ok) { toast(r.message); a.disabled = false; } });
+      break;
+    }
+    case 'signout': store.signOut().then(()=>{ state.panel=null; toast('Signed out'); render(); }); break;
+    case 'customize': state.panel = state.panel==='customize'?null:'customize'; render(); break;
+    case 'share': state.panel = state.panel==='share'?null:'share'; render(); break;
+    case 'close-panel': state.panel = null; render(); break;
+    case 'th': {
+      const k = a.dataset.k; let v = a.dataset.v;
+      if(k==='radius') v = Number(v);
+      f.theme[k] = v; dirty(); render(); break;
+    }
+    case 'publish': {
+      f.published = !f.published;
+      dirty(); render();
+      toast(f.published ? 'Published — the link works now' : 'Unpublished — the link stops working');
+      break;
+    }
+    case 'copy-link': {
+      const txt = document.getElementById('sharelink').textContent;
+      copy(txt); break;
+    }
+    case 'add-block': openMenu('insert', {at:Number(a.dataset.at), rect:a.getBoundingClientRect()}); break;
+    case 'type-menu': openMenu('type', {blockId:a.dataset.id, rect:a.getBoundingClientRect()}); break;
+    case 'pick-type': applyType(a.dataset.k); break;
+    case 'req': { const b = f.blocks.find(x=>x.id===a.dataset.id); b.required = !b.required; dirty(); render(); break; }
+    case 'del-block': { const id = a.dataset.id;
+      f.blocks = f.blocks.filter(x=>x.id!==id);
+      f.logic = rules(f).filter(r=>r.when!==id && r.target!==id);
+      if(!f.blocks.length) f.blocks=[block('short_text','')]; state.sel=null; dirty(); render(); break; }
+    case 'add-logic': {
+      const b = f.blocks.find(x=>x.id===a.dataset.id);
+      const kind = opKind(b.type);
+      const after = f.blocks.slice(f.blocks.indexOf(b)+1).find(x=>x.type!=='page')
+                 || f.blocks.find(x=>x.type!=='page' && x.id!==b.id);
+      const r = {id:uid('r'), when:b.id, op:'is', value: kind==='pick' ? ((b.options||[])[0]||{}).id : '',
+                 do:'show', target: after ? after.id : ''};
+      const np = pagesOf(f).length, pi = pageOfBlock(f, b.id);
+      if(np>1 && pi<np-1){ r.do='jump'; r.page=Math.min(pi+1, np-1); r.target=undefined; }
+      rules(f).push(r); state.sel = b.id; dirty(); render(); break;
+    }
+    case 'del-logic': { f.logic = rules(f).filter(r=>r.id!==a.dataset.id); dirty(); render(); break; }
+    case 'add-field': {
+      const el = document.getElementById('newfield');
+      const name = fieldName(el ? el.value : '');
+      if(!name){ if(el) el.focus(); break; }
+      if(fields(f).some(h=>h.name===name)){ toast('That field already exists'); break; }
+      fields(f).push({id:uid('h'), name});
+      if(el) el.value = '';
+      dirty(); render();
+      const next = document.getElementById('newfield'); if(next) next.focus();
+      break;
+    }
+    case 'del-field': {
+      const name = a.dataset.name;
+      f.hidden = fields(f).filter(h=>h.name!==name);
+      f.logic = rules(f).filter(r=>r.when !== HIDDEN_PREFIX+name);
+      if(state.testHidden) delete state.testHidden[name];
+      dirty(); render(); break;
+    }
+    case 'add-opt': { const b = f.blocks.find(x=>x.id===a.dataset.id); const o={id:uid('o'),text:''}; b.options.push(o); state.focus={id:b.id,opt:o.id}; dirty(); render(); break; }
+    case 'del-opt': { const b = f.blocks.find(x=>x.id===a.dataset.id); if(b.options.length>1) b.options = b.options.filter(o=>o.id!==a.dataset.opt); dirty(); render(); break; }
+    case 'rate-more': { const b = f.blocks.find(x=>x.id===a.dataset.id); b.max = Math.min(b.type==='rating'?10:11, b.max+1); dirty(); render(); break; }
+    case 'rate-less': { const b = f.blocks.find(x=>x.id===a.dataset.id); b.max = Math.max(2, b.max-1); dirty(); render(); break; }
+    /* fill */
+    case 'pick': {
+      const b = f.blocks.find(x=>x.id===a.dataset.id), o = a.dataset.opt;
+      if(b.type==='checkboxes'){ const cur = Array.isArray(state.answers[b.id])?state.answers[b.id].slice():[];
+        const i = cur.indexOf(o); i>=0?cur.splice(i,1):cur.push(o); state.answers[b.id]=cur; }
+      else state.answers[b.id] = state.answers[b.id]===o ? undefined : o;
+      delete state.bad[b.id]; render(); break;
+    }
+    case 'rate': { state.answers[a.dataset.id] = Number(a.dataset.v); delete state.bad[a.dataset.id]; render(); break; }
+    case 'next': if(f.theme.runner==='step'){ advanceStep(); } else if(validate()) advance(); else render(); break;
+    case 'prev': {
+      const back = state.hist.length ? state.hist.pop() : null;
+      if(f.theme.runner==='step') state.step = back===null ? Math.max(0,state.step-1) : back;
+      else state.page = back===null ? Math.max(0,state.page-1) : back;
+      state.bad={}; render(); break;
+    }
+    case 'send': {
+      if(!validate()){ render(); break; }
+      const j = jumpFrom(pagesOf(f)[state.page], f, state.answers);
+      if(j && j.do==='jump' && Number(j.page)!==state.page) advance(); else send();
+      break;
+    }
+    case 'again': state.page=0; state.step=0; state.hist=[]; state.answers={}; state.bad={}; state.done=false; render(); break;
+    case 'runner': { f.theme.runner = f.theme.runner==='step'?'grid':'step'; state.page=0; state.step=0; state.hist=[]; state.bad={}; dirty(); render(); break; }
+    /* responses */
+    case 'copy-csv': copy(csv()); break;
+    case 'dl-csv': dlCsv(); break;
+  }
+});
+
+function copy(txt){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(()=>toast('Copied')).catch(()=>selectFallback(txt));
+  } else selectFallback(txt);
+}
+function selectFallback(txt){
+  const ta = document.createElement('textarea'); ta.value = txt;
+  ta.style.cssText = 'position:fixed;left:-9999px'; document.body.appendChild(ta); ta.select();
+  toast('Select and copy — the clipboard is blocked here'); setTimeout(()=>ta.remove(), 8000);
+}
+async function dlCsv(){
+  try{ await store.downloads.save({filename:(form().title||'responses').replace(/[^\w\- ]+/g,'')+'.csv', data:csv()}); toast('Saved'); }
+  catch(e){ copy(csv()); }
+}
+
+/* text binding (no re-render, so the caret stays put) */
+document.addEventListener('input', e=>{
+  const t = e.target, f = form();
+  if(t.dataset.bind==='title' && f){
+    f.title = t.value; store.saveForm(f); state.dirtyUntil = Date.now()+4000;
+    if(t.classList.contains('ftitle')){ fit(t); const b = document.getElementById('ftitle-bar'); if(b) b.value = t.value; }
+    return;
+  }
+  if(t.dataset.th && f){ f.theme[t.dataset.th] = t.value; store.saveForm(f); state.dirtyUntil = Date.now()+4000; return; }
+  if(t.id === 'emoji-q'){
+    state.emojiQ = t.value;
+    const g = document.getElementById('emoji-grid');
+    if(g) g.innerHTML = emojiGrid();
+    return;
+  }
+  if(t.dataset.hf !== undefined && f){
+    state.testHidden = state.testHidden || {};
+    state.testHidden[t.dataset.hf] = t.value;
+    const link = document.getElementById('sharelink');
+    if(link) link.textContent = linkFor(f, state.testHidden);
+    return;
+  }
+  if(t.dataset.rule && t.dataset.k==='value' && f){
+    const r = rules(f).find(x=>x.id===t.dataset.rule);
+    if(r){ r.value = t.value; store.saveForm(f); state.dirtyUntil = Date.now()+4000; }
+    return;
+  }
+  if(t.classList.contains('q') && state.menu){ state.menu.q = t.value; state.menu.idx = 0; drawMenu(); return; }
+  if(t.dataset.block && f){
+    const b = f.blocks.find(x=>x.id===t.dataset.block); if(!b) return;
+    if(t.dataset.field==='label'){
+      if(t.value==='/' && !state.menu){ openMenu('slash', {at:f.blocks.indexOf(b)+1, blockId:b.id, slash:true, rect:t.getBoundingClientRect()}); }
+      else if(state.menu && state.menu.slash && state.menu.blockId===b.id){
+        if(t.value[0] !== '/'){ closeMenu(); } else { state.menu.q = t.value.slice(1); state.menu.idx = 0; drawMenu(); }
+      }
+      else {
+        const upto = t.value.slice(0, t.selectionStart == null ? t.value.length : t.selectionStart);
+        if(!state.menu && /(^|\s)@$/.test(upto)){
+          openMenu('pipe', {blockId:b.id, rect:t.getBoundingClientRect()});
+        } else if(state.menu && state.menu.kind === 'pipe'){
+          const m2 = /(?:^|\s)@([^\s]*)$/.exec(upto);
+          if(!m2) closeMenu(); else { state.menu.q = m2[1]; state.menu.idx = 0; drawMenu(); }
+        }
+      }
+      b.label = t.value; fit(t);
+    }
+    else if(t.dataset.field==='opt'){ const o = b.options.find(o=>o.id===t.dataset.opt); if(o) o.text = t.value; }
+    else b[t.dataset.field] = t.value;
+    store.saveForm(f); state.dirtyUntil = Date.now()+4000;
+    return;
+  }
+  if(t.dataset.a!==undefined && state.view==='fill'){
+    const id = t.dataset.a;
+    state.answers[id] = t.type==='file' ? (t.files[0]?t.files[0].name:'') : t.value;
+    delete state.bad[id];
+    if(t.type==='file'){ render(); }
+  }
+});
+document.addEventListener('change', e=>{
+  const t = e.target, f = form();
+  if(t.dataset.rule && f){
+    const r = rules(f).find(x=>x.id===t.dataset.rule); if(!r) return;
+    const k = t.dataset.k;
+    if(k==='when'){
+      r.when = t.value;
+      const nb = f.blocks.find(x=>x.id===r.when);
+      r.op = 'is'; r.value = nb && opKind(nb.type)==='pick' ? ((nb.options||[])[0]||{}).id : '';
+    } else if(k==='do'){
+      r.do = t.value;
+      if(r.do==='jump') r.page = Math.min(pageOfBlock(f, r.when)+1, pagesOf(f).length-1);
+      else if(r.do==='show'||r.do==='hide'){
+        if(!r.target){ const after = f.blocks.find(x=>x.type!=='page' && x.id!==r.when); r.target = after?after.id:''; }
+      }
+    } else if(k==='page') r.page = Number(t.value);
+    else r[k] = t.value;
+    state.dirtyUntil = Date.now()+4000; store.saveForm(f); render(); return;
+  }
+  if(t.dataset.a!==undefined && state.view==='fill' && (t.tagName==='SELECT'||t.type==='file')){
+    state.answers[t.dataset.a] = t.type==='file' ? (t.files[0]?t.files[0].name:'') : t.value;
+    delete state.bad[t.dataset.a];
+    if(t.type==='file') render();
+  }
+});
+
+/* keyboard: the editor's spine */
+document.addEventListener('keydown', e=>{
+  const f = form();
+  if(e.target.id==='newfield' && e.key==='Enter'){
+    e.preventDefault();
+    const btn = document.querySelector('[data-act="add-field"]');
+    if(btn) btn.click();
+    return;
+  }
+  if(state.menu){
+    const items = menuItems();
+    if(e.key==='ArrowDown'){ e.preventDefault(); state.menu.idx = Math.min(items.length-1, state.menu.idx+1); drawMenu(); return; }
+    if(e.key==='ArrowUp'){ e.preventDefault(); state.menu.idx = Math.max(0, state.menu.idx-1); drawMenu(); return; }
+    if(e.key==='Enter'){ e.preventDefault(); if(items[state.menu.idx]) applyType(items[state.menu.idx]); return; }
+    if(e.key==='Escape'){ e.preventDefault(); const m=state.menu; closeMenu();
+      if(m.slash){ const b = f.blocks.find(x=>x.id===m.blockId); if(b){ b.label=''; state.focus={id:b.id,field:'label'}; render(); } }
+      return; }
+    if(e.key.length===1 && state.menu.kind==='type'){ state.menu.q += e.key; state.menu.idx=0; drawMenu(); e.preventDefault(); return; }
+    if(e.key==='Backspace' && state.menu.kind==='type'){ state.menu.q = state.menu.q.slice(0,-1); drawMenu(); e.preventDefault(); return; }
+  }
+  if(state.view==='build' && f){
+    const t = e.target;
+    if(t.dataset && t.dataset.field==='label'){
+      const b = f.blocks.find(x=>x.id===t.dataset.block); const i = f.blocks.indexOf(b);
+      if(e.key==='Enter' && !e.shiftKey){
+        e.preventDefault();
+        const nb = block('text','');
+        f.blocks.splice(i+1, 0, nb); state.sel = nb.id; state.focus = {id:nb.id, field:'label'};
+        store.saveForm(f); state.dirtyUntil = Date.now()+4000; render(); return;
+      }
+      if(e.key==='Backspace' && t.value==='' && f.blocks.length>1){
+        e.preventDefault();
+        f.blocks.splice(i,1);
+        const prev = f.blocks[Math.max(0,i-1)];
+        state.sel = prev.id; state.focus = {id:prev.id, field:'label'};
+        store.saveForm(f); state.dirtyUntil = Date.now()+4000; render(); return;
+      }
+      if(e.key==='ArrowUp' && t.selectionStart===0 && i>0){ e.preventDefault(); state.sel=f.blocks[i-1].id; state.focus={id:f.blocks[i-1].id,field:'label'}; render(); return; }
+      if(e.key==='ArrowDown' && t.selectionStart===t.value.length && i<f.blocks.length-1){ e.preventDefault(); state.sel=f.blocks[i+1].id; state.focus={id:f.blocks[i+1].id,field:'label'}; render(); return; }
+    }
+    if(t.dataset && t.dataset.field==='opt'){
+      const b = f.blocks.find(x=>x.id===t.dataset.block);
+      const oi = b.options.findIndex(o=>o.id===t.dataset.opt);
+      if(e.key==='Enter'){ e.preventDefault(); const o={id:uid('o'),text:''}; b.options.splice(oi+1,0,o); state.focus={id:b.id,opt:o.id}; store.saveForm(f); state.dirtyUntil=Date.now()+4000; render(); return; }
+      if(e.key==='Backspace' && t.value==='' && b.options.length>1){ e.preventDefault(); b.options.splice(oi,1);
+        const p = b.options[Math.max(0,oi-1)]; state.focus={id:b.id,opt:p.id}; store.saveForm(f); state.dirtyUntil=Date.now()+4000; render(); return; }
+    }
+    if(e.key==='Escape'){ state.sel=null; render(); }
+  }
+  if(state.view==='fill' && f && !state.done){
+    const tag = (e.target.tagName||'').toLowerCase();
+    // Enter is how you answer a one-question runner, so it has to work from
+    // inside the field. A textarea keeps it for newlines.
+    if(e.key==='Enter' && !e.shiftKey && tag!=='textarea' && tag!=='button'){
+      e.preventDefault();
+      if(f.theme.runner==='step'){ advanceStep(); return; }
+      const pg = pagesOf(f);
+      if(!validate()){ render(); return; }
+      if(state.page===pg.length-1){
+        const j = jumpFrom(pg[state.page], f, state.answers);
+        if(j && j.do==='jump' && Number(j.page)!==state.page) advance(); else send();
+      } else advance();
+      return;
+    }
+    if(tag==='input'||tag==='textarea'||tag==='select') return;
+    const k = e.key.toUpperCase();
+    if(KEYS.includes(k) && k.length===1){
+      const page = f.theme.runner==='step'
+        ? (function(){ const st = stepsOf(f)[state.step]; return st && st.q ? [st.q] : []; })()
+        : liveBlocks(pagesOf(f)[state.page], f);
+      const q = page.find(b=>b.type==='choice'||b.type==='checkboxes');
+      if(q){ const idx = KEYS.indexOf(k); const o = q.options[idx];
+        if(o){ e.preventDefault();
+          if(q.type==='checkboxes'){ const cur = Array.isArray(state.answers[q.id])?state.answers[q.id].slice():[]; const i2=cur.indexOf(o.id); i2>=0?cur.splice(i2,1):cur.push(o.id); state.answers[q.id]=cur; }
+          else state.answers[q.id] = o.id;
+          delete state.bad[q.id]; render(); } }
+    }
+
+  }
+});
+
+/* drag to reorder */
+let dragId = null;
+document.addEventListener('dragstart', e=>{
+  const g = e.target.closest('.grip'); if(!g) return;
+  dragId = g.dataset.id; e.dataTransfer.effectAllowed='move';
+  try{ e.dataTransfer.setData('text/plain', dragId) }catch(err){}
+});
+document.addEventListener('dragover', e=>{
+  if(!dragId) return;
+  const blk = e.target.closest('.blk'); if(!blk) return;
+  e.preventDefault();
+  document.querySelectorAll('.blk').forEach(n=>n.classList.remove('drop-before','drop-after'));
+  const r = blk.getBoundingClientRect();
+  blk.classList.add(e.clientY < r.top + r.height/2 ? 'drop-before' : 'drop-after');
+});
+document.addEventListener('drop', e=>{
+  if(!dragId) return;
+  const blk = e.target.closest('.blk'); const f = form();
+  document.querySelectorAll('.blk').forEach(n=>n.classList.remove('drop-before','drop-after'));
+  if(blk && f){
+    e.preventDefault();
+    const from = f.blocks.findIndex(b=>b.id===dragId);
+    const r = blk.getBoundingClientRect();
+    let to = f.blocks.findIndex(b=>b.id===blk.dataset.id);
+    if(e.clientY >= r.top + r.height/2) to++;
+    const [moved] = f.blocks.splice(from,1);
+    if(from < to) to--;
+    f.blocks.splice(to, 0, moved);
+    store.saveForm(f); state.dirtyUntil = Date.now()+4000; render();
+  }
+  dragId = null;
+});
+document.addEventListener('dragend', ()=>{ dragId=null; document.querySelectorAll('.blk').forEach(n=>n.classList.remove('drop-before','drop-after')); });
+
+/* fill: validation + submit */
+function advance(){
+  const f = form(), pages = pagesOf(f);
+  const jump = jumpFrom(pages[state.page], f, state.answers);
+  if(jump && jump.do==='submit'){ send(); return; }
+  state.hist.push(state.page);
+  let next = jump ? Math.max(0, Math.min(pages.length-1, Number(jump.page)||0)) : state.page+1;
+  while(next < pages.length-1 && !liveBlocks(pages[next], f).length) next++;
+  state.page = Math.min(next, pages.length-1);
+  window.scrollTo({top:0,behavior:'smooth'});
+  render();
+}
+function validate(){
+  const f = form(); const page = f.theme.runner==='step'
+        ? (function(){ const st = stepsOf(f)[state.step]; return st && st.q ? [st.q] : []; })()
+        : liveBlocks(pagesOf(f)[state.page], f);
+  state.bad = {};
+  page.forEach(b=>{
+    if(!isInput(b.type) || !b.required) return;
+    const v = state.answers[b.id];
+    const empty = v===undefined || v===null || v==='' || (Array.isArray(v) && !v.length);
+    if(empty) state.bad[b.id] = 'This question needs an answer.';
+    else if(b.type==='email' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) state.bad[b.id] = 'Check the email address.';
+  });
+  const first = Object.keys(state.bad)[0];
+  if(first) setTimeout(()=>{ const el = document.querySelector(`[data-q="${first}"]`); if(el) el.scrollIntoView({block:'center',behavior:'smooth'}); }, 0);
+  return !first;
+}
+async function send(){
+  if(!validate()){ render(); return; }
+  const f = form();
+  const kept = {};
+  f.blocks.forEach(b=>{
+    if(!isInput(b.type)) return;
+    const v = state.answers[b.id];
+    if(v===undefined || v===null || v==='' || (Array.isArray(v)&&!v.length)) return;
+    if(visible(b, f, state.answers)) kept[b.id] = v;
+  });
+  const rec = {id:uid('s'), formId:f.id, createdAt:Date.now(), answers:JSON.parse(JSON.stringify(kept)),
+    hidden:JSON.parse(JSON.stringify(state.hidden||{}))};
+  state.done = true; render();
+  const res = await store.submit(rec);
+  if(!res.ok) toast('Saved on this device — this view cannot write to the shared store');
+  else if(res.offline) toast('Saved on this device');
+}
+
+/* hash routing: #form-<id> opens the form itself */
+function fromHash(){
+  const token = readLink().token;
+  if(token.startsWith('form-')){
+    const id = token.slice(5);
+    if(store.forms[id]){
+      state.formId = id; state.view='fill'; state.page=0; state.step=0; state.hist=[];
+      state.answers={}; state.bad={}; state.done=false;
+      state.hidden = hiddenValues(store.forms[id]);
+      return true;
+    }
+  }
+  return false;
+}
+window.addEventListener('hashchange', ()=>{ if(fromHash()) render(); });
+window.addEventListener('resize', ()=>{ if(state.menu) closeMenu(); });
+
+/* boot */
+const original = store.boot.bind(store);
+store.boot = async function(){
+  await original();
+  if(fromHash()) render();
+};
+if(bar && stage) store.boot();
+</script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="Write a form the way you write a document. Blocks, conditional logic, hidden fields, responses.">
+<meta name="description" content="Suisei is a form builder you write like a document. Type a question, press / for the next block, branch it, publish it, read what comes back.">
 <title>Suisei 水星</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Old+Mincho:wght@400;700&display=swap">
@@ -339,13 +339,177 @@ td.when{color:var(--muted);font-variant-numeric:tabular-nums}
 .egrid img{width:24px;height:24px}
 .pubrow{display:flex;align-items:center;gap:var(--sp-2);justify-content:space-between}
 </style>
+<style>
+/* The page is one column of bands. Everything that looks like the product is
+   drawn by the product's own render functions, so the page cannot show a
+   screenshot of something the app no longer does. */
+.band{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.band > .inner{max-width:1000px;margin:0 auto}
+
+/* --- hero --------------------------------------------------------------- */
+.hero{padding-block:var(--sp-8) var(--sp-7);position:relative;overflow:hidden}
+.hero .inner{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--sp-7);align-items:center}
+.orbit{position:absolute;right:-180px;top:-120px;width:620px;height:620px;border-radius:50%;
+  border:1px solid var(--line);opacity:.5;pointer-events:none}
+.orbit::after{content:"";position:absolute;left:50%;top:-5px;width:9px;height:9px;border-radius:50%;
+  background:var(--accent);transform:translateX(-50%)}
+.eyebrow{display:flex;align-items:center;gap:var(--sp-2);margin-bottom:var(--sp-4)}
+.eyebrow .kanji{font-family:var(--serif);font-size:var(--fs-h2);line-height:1;color:var(--accent)}
+.eyebrow .word{font-size:var(--fs-micro);line-height:var(--lh-micro);font-weight:500;text-transform:uppercase;letter-spacing:.18em;color:var(--muted)}
+.hero h1{font-size:var(--fs-display);line-height:var(--lh-display);letter-spacing:-.035em;margin-bottom:var(--sp-4);text-wrap:balance}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.hero .hero-lede{font-size:var(--fs-body);line-height:var(--lh-body);color:var(--muted);max-width:46ch;margin-bottom:var(--sp-5)}
+.cta{display:flex;flex-wrap:wrap;gap:var(--sp-2);align-items:center}
+.cta .go{display:inline-flex;align-items:center;gap:var(--sp-2);background:var(--accent);color:var(--accent-fg);
+  border-radius:var(--r);padding:var(--sp-3) var(--sp-5);font-weight:700;font-size:var(--fs-body);line-height:1}
+.cta .go:hover{filter:brightness(1.08)}
+.cta .alt{display:inline-flex;align-items:center;gap:var(--sp-2);border:1px solid var(--line-2);
+  border-radius:var(--r);padding:var(--sp-3) var(--sp-4);font-size:var(--fs-label);line-height:1;color:var(--fg)}
+.cta .alt:hover{border-color:var(--accent);color:var(--accent)}
+.under{margin-top:var(--sp-4);font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--faint)}
+
+/* a real sheet, shown rather than described */
+.shot{border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow);background:var(--surface)}
+.shot .canvasform{pointer-events:none}
+/* hover affordances have no meaning in a still picture */
+.shot .gutter,.step .demo .gutter{display:none}
+.badge{display:none}
+.shot .col{padding-block:var(--sp-5);max-width:none}
+.shot .blocks{margin-top:var(--sp-4)}
+
+/* --- steps -------------------------------------------------------------- */
+.steps{padding-block:var(--sp-7);border-top:1px solid var(--line)}
+.steps h2{font-size:var(--fs-h1);line-height:var(--lh-h1);letter-spacing:-.025em;margin-bottom:var(--sp-6);text-wrap:balance}
+.step{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:var(--sp-6);align-items:center;margin-bottom:var(--sp-7)}
+.step:last-child{margin-bottom:0}
+.step h3{font-size:var(--fs-h2);line-height:var(--lh-h2);letter-spacing:-.02em;margin-bottom:var(--sp-2)}
+.step p{font-size:var(--fs-body);line-height:var(--lh-body);color:var(--muted);max-width:42ch}
+.step .n{font-size:var(--fs-micro);line-height:var(--lh-micro);font-weight:500;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--accent);margin-bottom:var(--sp-2)}
+.step .demo{border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);padding:var(--sp-4);overflow:hidden}
+.step .demo .canvasform{pointer-events:none;background:none}
+/* a demo shows the block being talked about, not the form it lives in */
+.step .demo .formicon,.step .demo .ftitle,.step .demo .ftitle-read,
+.step .demo .addopt,.step .demo .nav,.step .demo .runner{display:none}
+
+/* --- facts -------------------------------------------------------------- */
+.facts{padding-block:var(--sp-7);border-top:1px solid var(--line)}
+.facts h2{font-size:var(--fs-h2);line-height:var(--lh-h2);letter-spacing:-.02em;margin-bottom:var(--sp-4)}
+.facts ul{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(248px,1fr));gap:var(--sp-3)}
+.facts li{display:flex;gap:var(--sp-2);font-size:var(--fs-body);line-height:var(--lh-body)}
+.facts li svg{flex:none;margin-top:3px;color:var(--accent)}
+.facts li span{color:var(--muted)}
+.facts li b{font-weight:500;color:var(--fg)}
+
+/* --- foot --------------------------------------------------------------- */
+.foot{padding-block:var(--sp-6) var(--sp-8);border-top:1px solid var(--line);
+  display:flex;flex-wrap:wrap;gap:var(--sp-4);align-items:center;justify-content:space-between}
+.foot .links{display:flex;flex-wrap:wrap;gap:var(--sp-4)}
+.foot a{font-size:var(--fs-label);line-height:var(--lh-label);color:var(--muted)}
+.foot a:hover{color:var(--accent)}
+.foot .small{font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--faint);max-width:52ch}
+
+@media(max-width:860px){
+  .hero .inner,.step{grid-template-columns:minmax(0,1fr);gap:var(--sp-5)}
+  .step{margin-bottom:var(--sp-6)}
+  .orbit{display:none}
+}
+</style>
 </head>
 <body>
 
-<div class="bar" id="bar"></div>
-<div class="stage" id="stage"></div>
-<div id="layer"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<div class="bar">
+  <div class="mark"><i>水</i>Suisei</div>
+  <div class="crumb"></div>
+  <div class="tools">
+    <a class="btn" href="https://github.com/wmCmo/suisei">Source</a>
+    <a class="btn primary" href="app.html">Open Suisei</a>
+  </div>
+</div>
+
+<div class="stage">
+
+  <section class="band hero">
+    <div class="orbit"></div>
+    <div class="inner">
+      <div>
+        <div class="eyebrow"><span class="kanji">水星</span><span class="word">Suisei</span></div>
+        <h1>Write a form the way you write a <em>document</em>.</h1>
+        <p class="hero-lede">Type a question. Press <code>/</code> for the next block. Branch it where
+          it matters, publish it, and read what comes back — without once dragging a field
+          out of a palette.</p>
+        <div class="cta">
+          <a class="go" href="app.html">Open Suisei</a>
+          <a class="alt" href="https://github.com/wmCmo/suisei">Read the source</a>
+        </div>
+        <p class="under">Free and open source. Your forms and the answers to them live in
+          your own database, not in someone's product.</p>
+      </div>
+      <div class="shot" id="shot-hero"></div>
+    </div>
+  </section>
+
+  <section class="band steps">
+    <div class="inner">
+      <h2>Three things it does differently.</h2>
+
+      <div class="step">
+        <div>
+          <div class="n">One</div>
+          <h3>A block menu, not a form builder</h3>
+          <p>Every question is a line you type. Press <code>/</code> and the block menu opens
+            where the caret is — eighteen kinds, filtered as you type, chosen with Enter. The
+            form reads like the document you were already writing.</p>
+        </div>
+        <div class="demo" id="shot-menu"></div>
+      </div>
+
+      <div class="step">
+        <div>
+          <div class="n">Two</div>
+          <h3>Logic that sits in the page</h3>
+          <p>A rule lives under the question it belongs to, not on a separate canvas you have
+            to keep in sync. Jump to a page, show or hide a block, or end the form early —
+            and a hidden field from the link can decide it too.</p>
+        </div>
+        <div class="demo" id="shot-logic"></div>
+      </div>
+
+      <div class="step">
+        <div>
+          <div class="n">Three</div>
+          <h3>Two runners, one form</h3>
+          <p>The same block list renders as a page of questions or as one question at a time,
+            and whoever is answering can switch between them mid-form without losing a single
+            answer.</p>
+        </div>
+        <div class="demo" id="shot-runner"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band facts">
+    <div class="inner">
+      <h2>What's in it</h2>
+      <ul id="facts"></ul>
+    </div>
+  </section>
+
+  <footer class="band foot">
+    <div class="inner" style="display:flex;flex-wrap:wrap;gap:var(--sp-4);align-items:center;justify-content:space-between;width:100%">
+      <div class="links">
+        <a href="app.html">Open Suisei</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="https://github.com/wmCmo/suisei">GitHub</a>
+        <a href="states.html">Components</a>
+      </div>
+      <p class="small">Icons are Fluent Emoji by Microsoft, MIT licensed. Type is Zen Kaku
+        Gothic New and Zen Old Mincho.</p>
+    </div>
+  </footer>
+
+</div>
+
 <script>window.SUISEI={"url":"https://ygdzcaneqpgkuumibtga.supabase.co","key":"sb_publishable_JvtFENRbPLMdQXbtCLTxRA_FLvKqJea","emoji":{"ref":"1ffb34c752ecf5d402f04cfb4b392c77f57c54bc","list":[{"n":"1st place medal","p":"1st place medal/Flat/1st_place_medal_flat.svg"},{"n":"Airplane","p":"Airplane/Flat/airplane_flat.svg"},{"n":"Alarm clock","p":"Alarm clock/Flat/alarm_clock_flat.svg"},{"n":"Anchor","p":"Anchor/Flat/anchor_flat.svg"},{"n":"Artist palette","p":"Artist palette/Flat/artist_palette_flat.svg"},{"n":"Automobile","p":"Automobile/Flat/automobile_flat.svg"},{"n":"Avocado","p":"Avocado/Flat/avocado_flat.svg"},{"n":"Balloon","p":"Balloon/Flat/balloon_flat.svg"},{"n":"Banana","p":"Banana/Flat/banana_flat.svg"},{"n":"Bar chart","p":"Bar chart/Flat/bar_chart_flat.svg"},{"n":"Beach with umbrella","p":"Beach with umbrella/Flat/beach_with_umbrella_flat.svg"},{"n":"Bear","p":"Bear/Flat/bear_flat.svg"},{"n":"Beer mug","p":"Beer mug/Flat/beer_mug_flat.svg"},{"n":"Bell","p":"Bell/Flat/bell_flat.svg"},{"n":"Bento box","p":"Bento box/Flat/bento_box_flat.svg"},{"n":"Bicycle","p":"Bicycle/Flat/bicycle_flat.svg"},{"n":"Birthday cake","p":"Birthday cake/Flat/birthday_cake_flat.svg"},{"n":"Blue heart","p":"Blue heart/Flat/blue_heart_flat.svg"},{"n":"Bookmark","p":"Bookmark/Flat/bookmark_flat.svg"},{"n":"Books","p":"Books/Flat/books_flat.svg"},{"n":"Briefcase","p":"Briefcase/Flat/briefcase_flat.svg"},{"n":"Broccoli","p":"Broccoli/Flat/broccoli_flat.svg"},{"n":"Bubble tea","p":"Bubble tea/Flat/bubble_tea_flat.svg"},{"n":"Bullseye","p":"Bullseye/Flat/bullseye_flat.svg"},{"n":"Butterfly","p":"Butterfly/Flat/butterfly_flat.svg"},{"n":"Cactus","p":"Cactus/Flat/cactus_flat.svg"},{"n":"Calendar","p":"Calendar/Flat/calendar_flat.svg"},{"n":"Camera","p":"Camera/Flat/camera_flat.svg"},{"n":"Camping","p":"Camping/Flat/camping_flat.svg"},{"n":"Card index dividers","p":"Card index dividers/Flat/card_index_dividers_flat.svg"},{"n":"Castle","p":"Castle/Flat/castle_flat.svg"},{"n":"Cat face","p":"Cat face/Flat/cat_face_flat.svg"},{"n":"Chart increasing","p":"Chart increasing/Flat/chart_increasing_flat.svg"},{"n":"Check mark button","p":"Check mark button/Flat/check_mark_button_flat.svg"},{"n":"Cherry blossom","p":"Cherry blossom/Flat/cherry_blossom_flat.svg"},{"n":"Clapping hands","p":"Clapping hands/Default/Flat/clapping_hands_flat_default.svg"},{"n":"Clinking beer mugs","p":"Clinking beer mugs/Flat/clinking_beer_mugs_flat.svg"},{"n":"Clipboard","p":"Clipboard/Flat/clipboard_flat.svg"},{"n":"Cloud","p":"Cloud/Flat/cloud_flat.svg"},{"n":"Compass","p":"Compass/Flat/compass_flat.svg"},{"n":"Confetti ball","p":"Confetti ball/Flat/confetti_ball_flat.svg"},{"n":"Cookie","p":"Cookie/Flat/cookie_flat.svg"},{"n":"Crayon","p":"Crayon/Flat/crayon_flat.svg"},{"n":"Credit card","p":"Credit card/Flat/credit_card_flat.svg"},{"n":"Crescent moon","p":"Crescent moon/Flat/crescent_moon_flat.svg"},{"n":"Cross mark","p":"Cross mark/Flat/cross_mark_flat.svg"},{"n":"Cup with straw","p":"Cup with straw/Flat/cup_with_straw_flat.svg"},{"n":"Deciduous tree","p":"Deciduous tree/Flat/deciduous_tree_flat.svg"},{"n":"Desktop computer","p":"Desktop computer/Flat/desktop_computer_flat.svg"},{"n":"Dog","p":"Dog/Flat/dog_flat.svg"},{"n":"Dollar banknote","p":"Dollar banknote/Flat/dollar_banknote_flat.svg"},{"n":"Dolphin","p":"Dolphin/Flat/dolphin_flat.svg"},{"n":"Doughnut","p":"Doughnut/Flat/doughnut_flat.svg"},{"n":"Droplet","p":"Droplet/Flat/droplet_flat.svg"},{"n":"Envelope","p":"Envelope/Flat/envelope_flat.svg"},{"n":"Face blowing a kiss","p":"Face blowing a kiss/Flat/face_blowing_a_kiss_flat.svg"},{"n":"Face with monocle","p":"Face with monocle/Flat/face_with_monocle_flat.svg"},{"n":"Face with tears of joy","p":"Face with tears of joy/Flat/face_with_tears_of_joy_flat.svg"},{"n":"Fire","p":"Fire/Flat/fire_flat.svg"},{"n":"Flexed biceps","p":"Flexed biceps/Default/Flat/flexed_biceps_flat_default.svg"},{"n":"Folded hands","p":"Folded hands/Default/Flat/folded_hands_flat_default.svg"},{"n":"Four leaf clover","p":"Four leaf clover/Flat/four_leaf_clover_flat.svg"},{"n":"Fox","p":"Fox/Flat/fox_flat.svg"},{"n":"French fries","p":"French fries/Flat/french_fries_flat.svg"},{"n":"Gear","p":"Gear/Flat/gear_flat.svg"},{"n":"Glowing star","p":"Glowing star/Flat/glowing_star_flat.svg"},{"n":"Grapes","p":"Grapes/Flat/grapes_flat.svg"},{"n":"Green apple","p":"Green apple/Flat/green_apple_flat.svg"},{"n":"Green heart","p":"Green heart/Flat/green_heart_flat.svg"},{"n":"Grinning face","p":"Grinning face/Flat/grinning_face_flat.svg"},{"n":"Hamburger","p":"Hamburger/Flat/hamburger_flat.svg"},{"n":"Hammer","p":"Hammer/Flat/hammer_flat.svg"},{"n":"Headphone","p":"Headphone/Flat/headphone_flat.svg"},{"n":"Herb","p":"Herb/Flat/herb_flat.svg"},{"n":"High voltage","p":"High voltage/Flat/high_voltage_flat.svg"},{"n":"Honeybee","p":"Honeybee/Flat/honeybee_flat.svg"},{"n":"Hospital","p":"Hospital/Flat/hospital_flat.svg"},{"n":"Hot beverage","p":"Hot beverage/Flat/hot_beverage_flat.svg"},{"n":"Hourglass done","p":"Hourglass done/Flat/hourglass_done_flat.svg"},{"n":"House","p":"House/Flat/house_flat.svg"},{"n":"Hugging face","p":"Hugging face/Flat/hugging_face_flat.svg"},{"n":"Hundred points","p":"Hundred points/Flat/hundred_points_flat.svg"},{"n":"Inbox tray","p":"Inbox tray/Flat/inbox_tray_flat.svg"},{"n":"Index pointing up","p":"Index pointing up/Default/Flat/index_pointing_up_flat_default.svg"},{"n":"Infinity","p":"Infinity/Flat/infinity_flat.svg"},{"n":"Information","p":"Information/Flat/information_flat.svg"},{"n":"Key","p":"Key/Flat/key_flat.svg"},{"n":"Label","p":"Label/Flat/label_flat.svg"},{"n":"Laptop","p":"Laptop/Flat/laptop_flat.svg"},{"n":"Light bulb","p":"Light bulb/Flat/light_bulb_flat.svg"},{"n":"Link","p":"Link/Flat/link_flat.svg"},{"n":"Locked","p":"Locked/Flat/locked_flat.svg"},{"n":"Locomotive","p":"Locomotive/Flat/locomotive_flat.svg"},{"n":"Magnifying glass tilted left","p":"Magnifying glass tilted left/Flat/magnifying_glass_tilted_left_flat.svg"},{"n":"Maple leaf","p":"Maple leaf/Flat/maple_leaf_flat.svg"},{"n":"Megaphone","p":"Megaphone/Flat/megaphone_flat.svg"},{"n":"Melting face","p":"Melting face/Flat/melting_face_flat.svg"},{"n":"Memo","p":"Memo/Flat/memo_flat.svg"},{"n":"Microphone","p":"Microphone/Flat/microphone_flat.svg"},{"n":"Microscope","p":"Microscope/Flat/microscope_flat.svg"},{"n":"Mobile phone","p":"Mobile phone/Flat/mobile_phone_flat.svg"},{"n":"Money bag","p":"Money bag/Flat/money_bag_flat.svg"},{"n":"Mountain","p":"Mountain/Flat/mountain_flat.svg"},{"n":"Mushroom","p":"Mushroom/Flat/mushroom_flat.svg"},{"n":"National park","p":"National park/Flat/national_park_flat.svg"},{"n":"Nerd face","p":"Nerd face/Flat/nerd_face_flat.svg"},{"n":"Octopus","p":"Octopus/Flat/octopus_flat.svg"},{"n":"Office building","p":"Office building/Flat/office_building_flat.svg"},{"n":"Open book","p":"Open book/Flat/open_book_flat.svg"},{"n":"Orange heart","p":"Orange heart/Flat/orange_heart_flat.svg"},{"n":"Package","p":"Package/Flat/package_flat.svg"},{"n":"Paintbrush","p":"Paintbrush/Flat/paintbrush_flat.svg"},{"n":"Panda","p":"Panda/Flat/panda_flat.svg"},{"n":"Paperclip","p":"Paperclip/Flat/paperclip_flat.svg"},{"n":"Party popper","p":"Party popper/Flat/party_popper_flat.svg"},{"n":"Partying face","p":"Partying face/Flat/partying_face_flat.svg"},{"n":"Pencil","p":"Pencil/Flat/pencil_flat.svg"},{"n":"Penguin","p":"Penguin/Flat/penguin_flat.svg"},{"n":"Pizza","p":"Pizza/Flat/pizza_flat.svg"},{"n":"Potted plant","p":"Potted plant/Flat/potted_plant_flat.svg"},{"n":"Purple heart","p":"Purple heart/Flat/purple_heart_flat.svg"},{"n":"Pushpin","p":"Pushpin/Flat/pushpin_flat.svg"},{"n":"Rabbit face","p":"Rabbit face/Flat/rabbit_face_flat.svg"},{"n":"Rainbow","p":"Rainbow/Flat/rainbow_flat.svg"},{"n":"Raising hands","p":"Raising hands/Default/Flat/raising_hands_flat_default.svg"},{"n":"Recycling symbol","p":"Recycling symbol/Flat/recycling_symbol_flat.svg"},{"n":"Red apple","p":"Red apple/Flat/red_apple_flat.svg"},{"n":"Red heart","p":"Red heart/Flat/red_heart_flat.svg"},{"n":"Red question mark","p":"Red question mark/Flat/red_question_mark_flat.svg"},{"n":"Rice ball","p":"Rice ball/Flat/rice_ball_flat.svg"},{"n":"Rocket","p":"Rocket/Flat/rocket_flat.svg"},{"n":"Rose","p":"Rose/Flat/rose_flat.svg"},{"n":"Round pushpin","p":"Round pushpin/Flat/round_pushpin_flat.svg"},{"n":"Sailboat","p":"Sailboat/Flat/sailboat_flat.svg"},{"n":"Saluting face","p":"Saluting face/Flat/saluting_face_flat.svg"},{"n":"School","p":"School/Flat/school_flat.svg"},{"n":"Scissors","p":"Scissors/Flat/scissors_flat.svg"},{"n":"Seedling","p":"Seedling/Flat/seedling_flat.svg"},{"n":"Shopping cart","p":"Shopping cart/Flat/shopping_cart_flat.svg"},{"n":"Shortcake","p":"Shortcake/Flat/shortcake_flat.svg"},{"n":"Shushing face","p":"Shushing face/Flat/shushing_face_flat.svg"},{"n":"Smiling face with hearts","p":"Smiling face with hearts/Flat/smiling_face_with_hearts_flat.svg"},{"n":"Smiling face with smiling eyes","p":"Smiling face with smiling eyes/Flat/smiling_face_with_smiling_eyes_flat.svg"},{"n":"Smiling face with sunglasses","p":"Smiling face with sunglasses/Flat/smiling_face_with_sunglasses_flat.svg"},{"n":"Snowflake","p":"Snowflake/Flat/snowflake_flat.svg"},{"n":"Sparkles","p":"Sparkles/Flat/sparkles_flat.svg"},{"n":"Sparkling heart","p":"Sparkling heart/Flat/sparkling_heart_flat.svg"},{"n":"Speech balloon","p":"Speech balloon/Flat/speech_balloon_flat.svg"},{"n":"Spiral calendar","p":"Spiral calendar/Flat/spiral_calendar_flat.svg"},{"n":"Star","p":"Star/Flat/star_flat.svg"},{"n":"Steaming bowl","p":"Steaming bowl/Flat/steaming_bowl_flat.svg"},{"n":"Straight ruler","p":"Straight ruler/Flat/straight_ruler_flat.svg"},{"n":"Strawberry","p":"Strawberry/Flat/strawberry_flat.svg"},{"n":"Sun","p":"Sun/Flat/sun_flat.svg"},{"n":"Sunflower","p":"Sunflower/Flat/sunflower_flat.svg"},{"n":"Sushi","p":"Sushi/Flat/sushi_flat.svg"},{"n":"Teacup without handle","p":"Teacup without handle/Flat/teacup_without_handle_flat.svg"},{"n":"Telescope","p":"Telescope/Flat/telescope_flat.svg"},{"n":"Test tube","p":"Test tube/Flat/test_tube_flat.svg"},{"n":"Thinking face","p":"Thinking face/Flat/thinking_face_flat.svg"},{"n":"Thought balloon","p":"Thought balloon/Flat/thought_balloon_flat.svg"},{"n":"Thumbs up","p":"Thumbs up/Default/Flat/thumbs_up_flat_default.svg"},{"n":"Ticket","p":"Ticket/Flat/ticket_flat.svg"},{"n":"Tokyo tower","p":"Tokyo tower/Flat/tokyo_tower_flat.svg"},{"n":"Toolbox","p":"Toolbox/Flat/toolbox_flat.svg"},{"n":"Trophy","p":"Trophy/Flat/trophy_flat.svg"},{"n":"Tulip","p":"Tulip/Flat/tulip_flat.svg"},{"n":"Turtle","p":"Turtle/Flat/turtle_flat.svg"},{"n":"Unicorn","p":"Unicorn/Flat/unicorn_flat.svg"},{"n":"Unlocked","p":"Unlocked/Flat/unlocked_flat.svg"},{"n":"Victory hand","p":"Victory hand/Default/Flat/victory_hand_flat_default.svg"},{"n":"Warning","p":"Warning/Flat/warning_flat.svg"},{"n":"Water wave","p":"Water wave/Flat/water_wave_flat.svg"},{"n":"Watermelon","p":"Watermelon/Flat/watermelon_flat.svg"},{"n":"Waving hand","p":"Waving hand/Default/Flat/waving_hand_flat_default.svg"},{"n":"Whale","p":"Whale/Flat/whale_flat.svg"},{"n":"Wine glass","p":"Wine glass/Flat/wine_glass_flat.svg"},{"n":"Winking face","p":"Winking face/Flat/winking_face_flat.svg"},{"n":"World map","p":"World map/Flat/world_map_flat.svg"},{"n":"Wrapped gift","p":"Wrapped gift/Flat/wrapped_gift_flat.svg"},{"n":"Wrench","p":"Wrench/Flat/wrench_flat.svg"},{"n":"Writing hand","p":"Writing hand/Default/Flat/writing_hand_flat_default.svg"},{"n":"Yellow heart","p":"Yellow heart/Flat/yellow_heart_flat.svg"}]}};</script>
 <script>
 "use strict";
@@ -1821,6 +1985,76 @@ store.boot = async function(){
   if(fromHash()) render();
 };
 if(bar && stage) store.boot();
+</script>
+<script>
+(function(){
+  // an old link to a form still points at this page; send it to the app
+  const q = new URLSearchParams(location.search);
+  if(q.get('form') || location.hash.indexOf('#form-') === 0){
+    location.replace('app.html' + location.search + location.hash);
+    return;
+  }
+
+  const flat = html => html.replace('min-height:calc(100vh - 52px)', 'min-height:0');
+  const sheet = (f, sel) => { store.forms[f.id] = f; state.formId = f.id; state.sel = sel || null; return flat(renderBuild()); };
+
+  /* hero: a form mid-write, with a block selected */
+  const hero = newForm('Friday demo night', [
+    block('h2', 'Doors at 18:30'),
+    block('short_text', 'Your name', {required:true}),
+    block('choice', 'Will you be there?', {options:[
+      {id:'a', text:'Yes, count me in'}, {id:'b', text:'No, can not make it'}]}),
+  ]);
+  hero.emoji = 'Party popper/Flat/party_popper_flat.svg';
+  document.getElementById('shot-hero').innerHTML = sheet(hero, null);
+
+  /* one: the block menu, built from the real type registry */
+  const groups = {};
+  Object.keys(TYPES).forEach(k => { (groups[TYPES[k].g] = groups[TYPES[k].g] || []).push(k); });
+  const picked = ['short_text','long_text','choice','checkboxes','dropdown','rating'];
+  // the menu reads its colours from the sheet it opens over, so give it one
+  const mf = newForm('menu');
+  document.getElementById('shot-menu').innerHTML =
+    `<div class="canvasform" data-bg="auto" style="${themeVars(mf)};background:none">
+     <div class="menu" style="position:static;width:auto;max-height:none;box-shadow:none;border:0;padding:0">
+       <input class="q" value="/" readonly aria-hidden="true">
+       <div class="grp">Input</div>
+       ${picked.map((k,i) => `<button class="it" aria-selected="${i===2}"><span class="ic">${I[TYPES[k].i]}</span>${TYPES[k].n}</button>`).join('')}
+     </div></div>`;
+
+  /* two: a rule card under its question */
+  const logic = newForm('Logic', [
+    block('choice', 'Will you be there?', {options:[{id:'a',text:'Yes, count me in'},{id:'b',text:'No'}]}),
+    block('number', 'How many seats?'),
+  ]);
+  logic.logic = [{id:'r1', when:logic.blocks[0].id, op:'is', value:'a', do:'show', target:logic.blocks[1].id}];
+  document.getElementById('shot-logic').innerHTML = sheet(logic, null);
+
+  /* three: the same form as one question at a time */
+  const runner = newForm('Runner', [block('short_text','What should we call you?',{required:true})]);
+  runner.theme.runner = 'step';
+  store.forms[runner.id] = runner; state.formId = runner.id;
+  state.page = 0; state.step = 0; state.hist = []; state.answers = {}; state.bad = {}; state.done = false;
+  document.getElementById('shot-runner').innerHTML = flat(renderFill());
+
+  const FACTS = [
+    ['Eighteen block types', 'short and long answer, choice, checkboxes, dropdown, number, email, phone, link, date, rating, scale, file, and the layout blocks'],
+    ['Conditional logic', 'jump to a page, show or hide a block, or submit early'],
+    ['Hidden fields', 'carry a campaign or an account id in the link and keep it with the answer'],
+    ['Answer piping', 'put an earlier answer inside a later question'],
+    ['Two runners', 'all at once, or one question at a time, switchable mid-form'],
+    ['Drafts stay private', 'a form is invisible until you publish it, enforced in the database'],
+    ['Responses and CSV', 'a table, per-question breakdowns, and an export'],
+    ['Your own database', 'forms and answers sit in your Supabase project, readable by you alone'],
+  ];
+  document.getElementById('facts').innerHTML = FACTS.map(([t, d]) =>
+    `<li>${I.tick}<span><b>${t}.</b> ${d}</span></li>`).join('');
+
+  document.querySelectorAll('textarea.lbl,.ftitle').forEach(fit);
+  if(document.fonts && document.fonts.ready){
+    document.fonts.ready.then(() => document.querySelectorAll('textarea.lbl,.ftitle').forEach(fit));
+  }
+})();
 </script>
 </body>
 </html>

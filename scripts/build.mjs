@@ -13,9 +13,9 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (f) => readFile(resolve(root, f), 'utf8');
 const strict = process.argv.includes('--strict');
 
-const [page, states, privacy, tokens, app, js] = await Promise.all([
-  read('src/page.html'), read('src/states.html'), read('src/privacy.html'),
-  read('src/tokens.css'), read('src/app.css'), read('src/app.js'),
+const [page, landing, states, privacy, tokens, app, js] = await Promise.all([
+  read('src/page.html'), read('src/landing.html'), read('src/states.html'),
+  read('src/privacy.html'), read('src/tokens.css'), read('src/app.css'), read('src/app.js'),
 ]);
 
 /* The project URL and the publishable key are inlined into the built page.
@@ -90,7 +90,8 @@ const fill = (shell) => shell
   .replace('<!--#app-js-->', `<script>\n${js.trim()}\n</script>`);
 
 const out = [
-  ['index.html', fill(page)],
+  ['index.html', fill(landing)],     // the landing page is what / serves
+  ['app.html', fill(page)],          // the builder moved here; old form links forward
   ['states.html', fill(states)],
   ['privacy.html', fill(privacy)],   // no app.js: it is a document, not the app
 ];
