@@ -30,6 +30,11 @@
 .hero h1 em{font-style:normal;color:var(--accent)}
 .hero .hero-lede{font-size:var(--fs-body);line-height:var(--lh-body);color:var(--muted);max-width:46ch;margin-bottom:var(--sp-5)}
 .cta{display:flex;flex-wrap:wrap;gap:var(--sp-2);align-items:center}
+/* these are anchors doing a button's job; an underline reads as clutter on
+   something that already looks pressable */
+.bar a,.cta a{text-decoration:none}
+.foot a{text-decoration:none}
+.foot a:hover{text-decoration:underline;text-underline-offset:3px}
 .cta .go{display:inline-flex;align-items:center;gap:var(--sp-2);background:var(--accent);color:var(--accent-fg);
   border-radius:var(--r);padding:var(--sp-3) var(--sp-5);font-weight:700;font-size:var(--fs-body);line-height:1}
 .cta .go:hover{filter:brightness(1.08)}
