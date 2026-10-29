@@ -531,13 +531,19 @@ const store = {
     this.ready = true;
     await this.loadForms();
     this.loadCounts();
+    const wanted = readLink().token;
+    if(wanted.startsWith('form-')) await this.loadForm(wanted.slice(5));
     render();
     if(fromHash()) render();
   },
 
+  /* The workspace is yours alone: it asks only for forms you own. A form
+     someone is filling is fetched one at a time by id instead, which is the
+     only read a respondent ever needs. */
   async loadForms(){
-    if(!sb) return;
-    const {data, error} = await sb.from('forms').select('id,doc,updated_at').order('updated_at',{ascending:false});
+    if(!sb || !this.user) return;
+    const {data, error} = await sb.from('forms').select('id,doc,updated_at')
+      .eq('owner', this.user.id).order('updated_at',{ascending:false});
     if(error){ this.lastError = error.message; render(); return; }
     this.lastError = null;
     const seen = new Set();
@@ -548,6 +554,13 @@ const store = {
       this.forms[f.id] = f;
     });
     this.writeLocal();
+  },
+
+  async loadForm(id){
+    if(!sb || !id || this.forms[id]) return;
+    const {data} = await sb.from('forms').select('doc').eq('id', id).limit(1);
+    const doc = data && data[0] && data[0].doc;
+    if(doc && doc.id){ this.forms[doc.id] = doc; render(); }
   },
 
   async loadCounts(){
