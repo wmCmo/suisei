@@ -18,6 +18,21 @@ const [page, states, tokens, app, js] = await Promise.all([
   read('src/tokens.css'), read('src/app.css'), read('src/app.js'),
 ]);
 
+/* The project URL and the publishable key are inlined into the built page.
+   They are meant to be public -- row level security is what protects the
+   data -- but nothing else from .env is ever read here. */
+let env = {};
+try {
+  env = Object.fromEntries((await read('.env')).split(/\r?\n/)
+    .map(l => l.trim())
+    .filter(l => l && !l.startsWith('#') && l.includes('='))
+    .map(l => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()]));
+} catch { /* no .env: the app falls back to this-device storage */ }
+
+const config = env.SUPABASE_URL && env.SUPABASE_ANON_KEY
+  ? `<script>window.SUISEI={url:${JSON.stringify(env.SUPABASE_URL)},key:${JSON.stringify(env.SUPABASE_ANON_KEY)}};</script>`
+  : '<script>window.SUISEI={};</script>';
+
 /* ---------------------------------------------------------------- the lint */
 const stripComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, '');
 const lines = stripComments(app).split('\n');
@@ -59,6 +74,7 @@ const byKind = warnings.reduce((acc, w) => {
 
 /* --------------------------------------------------------------- the pages */
 const fill = (shell) => shell
+  .replace('<!--#config-->', config)
   .replace('<!--#tokens-->', `<style>\n${tokens.trim()}\n</style>`)
   .replace('<!--#app-css-->', `<style>\n${app.trim()}\n</style>`)
   .replace('<!--#app-js-->', `<script>\n${js.trim()}\n</script>`);
@@ -71,6 +87,8 @@ for (const [name, html] of out) {
   await writeFile(resolve(root, name), html, 'utf8');
   console.log(`${name.padEnd(12)} ${(html.length / 1024).toFixed(1)} KB`);
 }
+
+console.log(env.SUPABASE_URL ? 'Supabase project inlined from .env' : 'No .env: built for this-device storage only');
 
 if (warnings.length) {
   console.log(`\n${warnings.length} warning(s): ${Object.entries(byKind).map(([k, n]) => `${n} ${k}`).join(', ')}`);

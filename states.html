@@ -343,6 +343,7 @@ td.when{color:var(--muted);font-variant-numeric:tabular-nums}
   </div></div>
   <div class="sheets" id="sheets"></div>
 </div>
+<script>window.SUISEI={url:"https://ygdzcaneqpgkuumibtga.supabase.co",key:"sb_publishable_JvtFENRbPLMdQXbtCLTxRA_FLvKqJea"};</script>
 <script>
 "use strict";
 /* ============================ model ============================ */
@@ -469,73 +470,131 @@ const TEMPLATES = {
 
 /* ============================ store ============================ */
 const LS = 'suisei.v1';
+const CFG = window.SUISEI || {};
+const sb = (CFG.url && CFG.key && window.supabase)
+  ? window.supabase.createClient(CFG.url, CFG.key,
+      {auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}})
+  : null;
+
+/* A submission is one shape in the page and another in the table. */
+const rowToSub = r => ({id:r.id, formId:r.form_id, createdAt:new Date(r.created_at).getTime(),
+                        answers:r.answers||{}, hidden:r.hidden||{}});
+
 const store = {
-  db:null, user:null, downloads:null, canWrite:null, editor:false, ready:false,
-  forms:{}, subs:[], remote:[], onSubs:null, unsubForms:null, unsubSubs:null,
+  sb, user:null, ready:false, downloads:null, editor:false, offline:!sb,
+  forms:{}, subs:[], remote:[], counts:{}, onSubs:null, onSubsId:null, lastError:null,
   readLocal(){ try{ return JSON.parse(localStorage.getItem(LS)||'{}') }catch(e){ return {} } },
   writeLocal(){ try{ localStorage.setItem(LS, JSON.stringify({forms:this.forms, subs:this.subs.filter(s=>s.local)})) }catch(e){} },
+
   async boot(){
     const cached = this.readLocal();
     if(cached.forms) this.forms = cached.forms;
     if(cached.subs) this.subs = cached.subs;
     render();
-    const c = window.claude;
-    if(!c || !c.use){ this.ready = true; render(); return; }
-    try{ this.db = await c.use('db'); }catch(e){ this.db = null; }
-    try{ this.user = await c.use('user'); }catch(e){ this.user = null; }
-    try{ this.downloads = await c.use('downloads'); }catch(e){ this.downloads = null; }
-    if(this.user){
-      try{ this.editor = await this.user.canEdit(); }catch(e){ this.editor = false; }
-      try{ this.canWrite = await this.user.can('data.write'); }catch(e){ this.canWrite = null; }
-    }
+    if(!sb){ this.ready = true; render(); if(fromHash()) render(); return; }
+    try{
+      const {data} = await sb.auth.getSession();
+      this.user = data && data.session ? data.session.user : null;
+    }catch(e){ this.user = null; }
+    this.editor = !!this.user;
+    sb.auth.onAuthStateChange((_evt, session) => {
+      this.user = session ? session.user : null;
+      this.editor = !!this.user;
+      this.loadForms(); this.loadCounts(); render();
+    });
     this.ready = true;
-    if(this.db){
-      this.unsubForms = this.db.collection('forms').onSnapshot(snap=>{
-        snap.docs.forEach(d=>{
-          const f = d.data(); if(!f || !f.id) return;
-          if(f.id===state.formId && Date.now() < state.dirtyUntil) return;
-          this.forms[f.id] = f;
-        });
-        snap.docChanges().forEach(ch=>{ if(ch.type==='removed') delete this.forms[ch.doc.id]; });
-        this.writeLocal(); render();
-      }, e=>{ console.warn('forms listener', e); });
-      this.unsubSubs = this.db.collection('submissions').limit(500).onSnapshot(snap=>{
-        this.remote = snap.docs.map(d=>d.data()).filter(Boolean);
-        if(this.onSubs) this.onSubs(this.rowsFor(this.onSubsId));
-        render();
-      }, e=>{ console.warn('subs listener', e); });
-    }
+    await this.loadForms();
+    this.loadCounts();
     render();
+    if(fromHash()) render();
   },
+
+  async loadForms(){
+    if(!sb) return;
+    const {data, error} = await sb.from('forms').select('id,doc,updated_at').order('updated_at',{ascending:false});
+    if(error){ this.lastError = error.message; render(); return; }
+    this.lastError = null;
+    const seen = new Set();
+    (data||[]).forEach(row => {
+      const f = row.doc; if(!f || !f.id) return;
+      seen.add(f.id);
+      if(f.id === state.formId && Date.now() < state.dirtyUntil) return;  // mid-edit
+      this.forms[f.id] = f;
+    });
+    this.writeLocal();
+  },
+
+  async loadCounts(){
+    if(!sb || !this.user) return;
+    const {data, error} = await sb.from('submissions').select('form_id');
+    if(error) return;                                   // only the owner may read these
+    const c = {};
+    (data||[]).forEach(r => { c[r.form_id] = (c[r.form_id]||0) + 1; });
+    this.counts = c; render();
+  },
+
   saveForm(f){
     f.updatedAt = Date.now();
     this.forms[f.id] = f;
     this.writeLocal();
     clearTimeout(this._t);
-    this._t = setTimeout(()=>{
-      if(!this.db) return;
-      this.db.doc('forms/'+f.id).set(JSON.parse(JSON.stringify(f))).catch(e=>console.warn('save', e));
-    }, 500);
+    this._t = setTimeout(async () => {
+      if(!sb || !this.user) return;                     // signed out: this device only
+      const doc = JSON.parse(JSON.stringify(f));
+      const {error} = await sb.from('forms')
+        .upsert({id:f.id, owner:this.user.id, title:f.title||'Untitled form', doc}, {onConflict:'id'});
+      if(error){ this.lastError = error.message; console.warn('save', error); render(); }
+      else if(this.lastError){ this.lastError = null; render(); }
+    }, 600);
   },
-  deleteForm(id){
-    delete this.forms[id]; this.writeLocal();
-    if(this.db) this.db.doc('forms/'+id).delete().catch(()=>{});
+
+  async deleteForm(id){
+    delete this.forms[id]; delete this.counts[id]; this.writeLocal();
+    if(sb && this.user) await sb.from('forms').delete().eq('id', id);
   },
+
   async submit(rec){
-    if(this.db){
-      try{ await this.db.collection('submissions').doc(rec.id).set(rec); this.bump(rec); return {ok:true}; }
-      catch(e){ rec.local = true; this.subs.push(rec); this.writeLocal(); return {ok:false, code:e && e.code}; }
+    if(sb){
+      const {error} = await sb.from('submissions')
+        .insert({id:rec.id, form_id:rec.formId, answers:rec.answers, hidden:rec.hidden||{}});
+      if(!error){ this.counts[rec.formId] = (this.counts[rec.formId]||0) + 1; this.bump(rec); return {ok:true}; }
+      rec.local = true; this.subs.push(rec); this.writeLocal();
+      return {ok:false, code:error.code, message:error.message};
     }
-    rec.local = true; this.subs.push(rec); this.writeLocal(); return {ok:true, offline:true};
+    rec.local = true; this.subs.push(rec); this.writeLocal();
+    return {ok:true, offline:true};
   },
+
   bump(rec){ if(!this.remote.some(r=>r.id===rec.id)) this.remote.push(rec); },
   rowsFor(formId){
     const seen = new Set();
-    return this.remote.concat(this.subs).filter(r=>r.formId===formId && !seen.has(r.id) && seen.add(r.id));
+    return this.remote.concat(this.subs).filter(r => r.formId===formId && !seen.has(r.id) && seen.add(r.id));
   },
-  watchSubs(formId, cb){ this.onSubs = cb; this.onSubsId = formId; cb(this.rowsFor(formId)); },
+  async watchSubs(formId, cb){
+    this.onSubs = cb; this.onSubsId = formId;
+    cb(this.rowsFor(formId));
+    if(!sb || !this.user) return;
+    const {data, error} = await sb.from('submissions')
+      .select('id,form_id,answers,hidden,created_at').eq('form_id', formId)
+      .order('created_at',{ascending:false}).limit(500);
+    if(error){ this.lastError = error.message; render(); return; }
+    this.remote = (data||[]).map(rowToSub);
+    if(this.onSubs && this.onSubsId===formId) this.onSubs(this.rowsFor(formId));
+    render();
+  },
   stopWatch(){ this.onSubs = null; },
-  countFor(id){ return this.rowsFor(id).length; },
+  countFor(id){
+    const n = this.counts[id];
+    return (n === undefined ? 0 : n) + this.subs.filter(s => s.formId===id).length;
+  },
+
+  async signIn(email){
+    if(!sb) return {ok:false, message:'No Supabase project configured'};
+    const {error} = await sb.auth.signInWithOtp({email,
+      options:{emailRedirectTo: location.origin + location.pathname}});
+    return error ? {ok:false, message:error.message} : {ok:true};
+  },
+  async signOut(){ if(sb) await sb.auth.signOut(); this.counts = {}; this.remote = []; render(); },
 };
 
 /* ============================ app state ============================ */
@@ -771,6 +830,13 @@ function advanceStep(){
 }
 
 
+function accountBit(){
+  if(!store.ready) return `<span class="pill">loading…</span>`;
+  if(!store.sb) return `<span class="pill" title="No Supabase project configured">this device</span>`;
+  if(!store.user) return `<button class="btn" data-act="account">${I.at}Sign in</button>`;
+  return `<button class="btn" data-act="account" title="${esc(store.user.email||'')}"><span class="pill live">signed in</span></button>`;
+}
+
 /* ============================ render: shell ============================ */
 function render(){
   const f = form();
@@ -789,7 +855,7 @@ function renderBar(){
   const f = form();
   if(state.view==='home' || !f){
     return `<div class="mark"><i>水</i>Suisei</div><div class="crumb"></div>
-      <div class="tools"><span class="pill">${store.ready ? (store.db?'synced':'this device') : 'loading…'}</span></div>`;
+      <div class="tools">${accountBit()}</div>`;
   }
   const tabs = `<div class="seg hide-sm">
       <button data-act="tab" data-v="build" aria-selected="${state.view==='build'}">Build</button>
@@ -803,6 +869,7 @@ function renderBar(){
     <div class="crumb"><span class="sep">/</span><input id="ftitle-bar" value="${esc(f.title)}" data-bind="title" aria-label="Form name"></div>
     ${tabs}
     <div class="tools">
+      ${accountBit()}
       <button class="btn" data-act="customize" title="Customize">${I.paint}<span class="hide-sm">Customize</span></button>
       <button class="btn" data-act="preview">${I.eye}<span class="hide-sm">Preview</span></button>
       <button class="btn primary" data-act="share">${I.share}Share</button>
@@ -983,7 +1050,7 @@ function renderFill(){
       <button class="btn ghost" data-act="again">Submit another response</button></div>`);
   }
   const hv = Object.keys(state.hidden||{});
-  const peek = ((store.editor || !store.db) && hv.length)
+  const peek = ((store.editor || !store.sb) && hv.length)
     ? `<div class="hfrow" style="margin:0 0 22px;padding:0;border:0">${hv.map(k=>`<code>@${esc(k)} = ${esc(state.hidden[k])}</code>`).join('')}<span class="lg">editors only</span></div>` : '';
   const title = `<h1 class="ftitle-read">${esc(f.title)}</h1>`;
 
@@ -1121,7 +1188,17 @@ function renderPanel(){
   const f = form(); if(!f) return;
   const scrim = document.createElement('div'); scrim.className='scrim'; scrim.dataset.act='close-panel';
   const p = document.createElement('div'); p.className='panel';
-  if(state.panel==='customize'){
+  if(state.panel==='account'){
+    const signedIn = !!store.user;
+    p.innerHTML = `<h4>${signedIn?'Signed in':'Sign in'}</h4>
+      ${signedIn
+        ? `<p class="note">You are signed in as <strong>${esc(store.user.email||'')}</strong>. Forms you build are saved to your project, and only you can read the responses.</p>
+           <button class="btn ghost" style="width:100%;justify-content:center;margin-top:var(--sp-3)" data-act="signout">Sign out</button>`
+        : `<p class="note">A link in your inbox signs you in — no password. Until then this device keeps your forms to itself, and answers people send still reach the project.</p>
+           <div class="fld" style="margin-top:var(--sp-3)"><label>Email</label><input type="text" id="signin-email" placeholder="you@example.com" aria-label="Email address"></div>
+           <button class="btn primary" style="width:100%;justify-content:center" data-act="sendlink">Send the link</button>`}
+      ${store.lastError?`<p class="note" style="margin-top:var(--sp-3);color:var(--warn)">Last error from the project: ${esc(store.lastError)}</p>`:''}`;
+  } else if(state.panel==='customize'){
     const t = f.theme;
     p.innerHTML = `<h4>Customize</h4>
       <div class="fld"><label>Accent</label><div class="swatches">${ACCENTS.map(c=>`<button style="background:${c}" data-act="th" data-k="accent" data-v="${c}" aria-pressed="${t.accent===c}" aria-label="${c}"></button>`).join('')}</div></div>
@@ -1152,7 +1229,7 @@ function renderPanel(){
           : `Values travel in the link as <code style="font-family:var(--mono)">~name.value</code>, because this page only ever receives a plain fragment — a <code style="font-family:var(--mono)">?query=string</code> is stripped before it arrives. Type a test value above and the link updates; letters, digits, <code style="font-family:var(--mono)">. _ ~ -</code> survive the trip, spaces become hyphens.`}</p>
       </div>
       <div class="fld"><label>Who can answer</label>
-        <p class="note">${store.db ? (store.canWrite===false ? 'This view cannot write to the shared store, so responses from it stay on this device.' : 'Responses are saved to the shared store and show up under Responses for editors.') : 'No shared store in this view — responses stay on this device.'}</p></div>
+        <p class="note">${store.sb ? 'Anyone with the link can answer, signed in or not. Only you can read the responses.' : 'No project connected — responses stay in the browser that submitted them.'}</p></div>
       <button class="btn primary" style="width:100%;justify-content:center" data-act="preview">${I.eye}Open the form</button>`;
   }
   layer.appendChild(scrim); layer.appendChild(p);
@@ -1273,6 +1350,19 @@ document.addEventListener('click', e=>{
     case 'tab': go(a.dataset.v); break;
     case 'preview': state.panel=null; go('fill', state.formId); break;
     case 'exit-fill': go('build', state.formId); break;
+    case 'account': state.panel = state.panel==='account'?null:'account'; render(); break;
+    case 'sendlink': {
+      const el = document.getElementById('signin-email');
+      const email = (el ? el.value : '').trim();
+      if(!email || email.indexOf('@')<0){ if(el) el.focus(); toast('Enter an email address'); break; }
+      a.disabled = true;
+      store.signIn(email).then(r => {
+        toast(r.ok ? 'Check your inbox for the link' : r.message);
+        state.panel = null; render();
+      });
+      break;
+    }
+    case 'signout': store.signOut().then(()=>{ state.panel=null; toast('Signed out'); render(); }); break;
     case 'customize': state.panel = state.panel==='customize'?null:'customize'; render(); break;
     case 'share': state.panel = state.panel==='share'?null:'share'; render(); break;
     case 'close-panel': state.panel = null; render(); break;
