@@ -79,14 +79,14 @@
 }
 /* A forced sheet also forces the UA's own widgets — scrollbars, selects,
    date pickers — so they don't arrive in the opposite theme. */
-.canvasform[data-bg="light"]{--f-bg:#fbfaf8;--f-fg:#15181a;--f-neutral-line:#d8d4ce;--f-soft:#e2dfda;--f-muted:#5d6165;--f-wash:var(--f-wash-light);color-scheme:light}
-.canvasform[data-bg="dark"]{--f-bg:#171c20;--f-fg:#f2efea;--f-neutral-line:#2b343b;--f-soft:#12171b;--f-muted:#a9b2b8;--f-wash:var(--f-wash-dark);--f-caret:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a9b2b8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");color-scheme:dark}
+.canvasform[data-bg="light"]{--f-bg:#fbfaf8;--f-fg:#15181a;--f-neutral-line:#d8d4ce;--f-soft:#e2dfda;--f-muted:#5d6165;--f-wash:var(--f-wash-light);--f-shadow:var(--f-shadow-light);color-scheme:light}
+.canvasform[data-bg="dark"]{--f-bg:#171c20;--f-fg:#f2efea;--f-neutral-line:#2b343b;--f-soft:#12171b;--f-muted:#a9b2b8;--f-wash:var(--f-wash-dark);--f-shadow:var(--f-shadow-dark);--f-caret:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a9b2b8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");color-scheme:dark}
 /* The accent is picked by whoever built the form, so it can be a deep colour
    that disappears as text on a dark sheet. Fills keep the chosen colour;
    text and small marks take a lifted version of it. */
 .canvasform[data-bg="dark"],
-:root[data-theme="dark"] .canvasform[data-bg="auto"]{--f-accent-text:color-mix(in srgb,var(--f-accent) 48%,#f2efea);--f-wash:var(--f-wash-dark);--f-caret:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a9b2b8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .canvasform[data-bg="auto"]{--f-accent-text:color-mix(in srgb,var(--f-accent) 48%,#f2efea);--f-wash:var(--f-wash-dark);--f-caret:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a9b2b8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}}
+:root[data-theme="dark"] .canvasform[data-bg="auto"]{--f-accent-text:color-mix(in srgb,var(--f-accent) 48%,#f2efea);--f-wash:var(--f-wash-dark);--f-shadow:var(--f-shadow-dark);--f-caret:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a9b2b8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .canvasform[data-bg="auto"]{--f-accent-text:color-mix(in srgb,var(--f-accent) 48%,#f2efea);--f-wash:var(--f-wash-dark);--f-shadow:var(--f-shadow-dark);--f-caret:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a9b2b8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}}
 
 /* The form sheet carries its own set, so a form can be themed
    independently of the app around it. */
@@ -99,6 +99,12 @@
      whatever happens to be behind it. This is the quiet step of --f-muted,
      mixed on purpose. */
   --f-faint:color-mix(in srgb,var(--f-muted) 58%,var(--f-bg));
+  /* --shadow belongs to the app and flips with the app's theme, so a form
+     forced light inside a dark app was lit from the wrong side. The sheet
+     carries its own, the way it carries its own wash. */
+  --f-shadow-light:0 1px 2px rgba(21,24,26,.07),0 10px 26px -14px rgba(21,24,26,.26);
+  --f-shadow-dark:0 1px 2px rgba(0,0,0,.4),0 12px 30px -16px rgba(0,0,0,.75);
+  --f-shadow:var(--f-shadow-light);
   --f-wash-light:color-mix(in srgb,var(--f-accent) 14%,var(--f-bg));
   --f-wash-dark:color-mix(in srgb,var(--f-accent) 40%,var(--f-bg));
   /* The wash follows the accent but the borders were a fixed warm grey, so a
@@ -314,6 +320,39 @@ select.fi{height:40px;background-color:var(--f-bg)}
 .crow>select.join{padding-right:var(--sp-4)}
 /* a taller control wants the caret a little further in */
 select.fi{background-position:right var(--sp-3) center;padding-right:var(--sp-6)}
+
+/* The dropdown's list used to be the operating system's: a blue highlight and
+   a system font in the middle of a themed form, and nothing CSS could reach.
+   base-select hands it over while the element stays a real <select>, so the
+   keyboard, the semantics and the phone's own picker are all still the
+   browser's. Where it is not supported the whole block is skipped and the
+   native list appears exactly as before, so this adds no fallback to keep.
+
+   The form's dropdown only. The editor's own selects carry optgroups, which
+   want their own treatment, and they are not on the themed sheet. */
+@supports (appearance: base-select){
+  select.fi, select.fi::picker(select){appearance:base-select}
+  /* the browser supplies ::picker-icon once it owns the popup, so the caret
+     we paint ourselves would be a second one beside it */
+  select.fi{background-image:none;padding-right:var(--sp-3)}
+  /* the browser's own mark is a solid triangle; every other select in the app
+     wears the chevron from --f-caret, which already carries its theme's colour */
+  select.fi::picker-icon{content:var(--f-caret);width:10px;height:6px;transition:rotate .14s ease}
+  select.fi:open::picker-icon{rotate:180deg}
+  select.fi::picker(select){
+    background:var(--f-bg);color:var(--f-fg);
+    border:1px solid var(--f-line);border-radius:var(--f-r);
+    padding:var(--sp-1);margin-block-start:var(--sp-1);
+    box-shadow:var(--f-shadow);font-family:inherit}
+  select.fi option{
+    display:flex;align-items:center;gap:var(--sp-2);
+    padding:var(--sp-2) var(--sp-3);border-radius:var(--r-sm);
+    font-size:var(--fs-body);line-height:var(--lh-body)}
+  select.fi option:hover{background:var(--f-soft)}
+  select.fi option:checked{background:var(--f-wash);color:var(--f-accent-text);font-weight:500}
+  /* the tint carries the selected state; the tick would sit in the text's place */
+  select.fi option::checkmark{display:none}
+}
 .logic select:focus,.logic input:focus{outline:none;border-color:var(--f-accent)}
 .logic .rm{color:var(--f-muted);padding:0 var(--sp-1)}
 .logic .rm:hover{color:var(--danger)}

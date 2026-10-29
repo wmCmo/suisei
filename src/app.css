@@ -185,6 +185,39 @@ select.fi{height:40px;background-color:var(--f-bg)}
 .crow>select.join{padding-right:var(--sp-4)}
 /* a taller control wants the caret a little further in */
 select.fi{background-position:right var(--sp-3) center;padding-right:var(--sp-6)}
+
+/* The dropdown's list used to be the operating system's: a blue highlight and
+   a system font in the middle of a themed form, and nothing CSS could reach.
+   base-select hands it over while the element stays a real <select>, so the
+   keyboard, the semantics and the phone's own picker are all still the
+   browser's. Where it is not supported the whole block is skipped and the
+   native list appears exactly as before, so this adds no fallback to keep.
+
+   The form's dropdown only. The editor's own selects carry optgroups, which
+   want their own treatment, and they are not on the themed sheet. */
+@supports (appearance: base-select){
+  select.fi, select.fi::picker(select){appearance:base-select}
+  /* the browser supplies ::picker-icon once it owns the popup, so the caret
+     we paint ourselves would be a second one beside it */
+  select.fi{background-image:none;padding-right:var(--sp-3)}
+  /* the browser's own mark is a solid triangle; every other select in the app
+     wears the chevron from --f-caret, which already carries its theme's colour */
+  select.fi::picker-icon{content:var(--f-caret);width:10px;height:6px;transition:rotate .14s ease}
+  select.fi:open::picker-icon{rotate:180deg}
+  select.fi::picker(select){
+    background:var(--f-bg);color:var(--f-fg);
+    border:1px solid var(--f-line);border-radius:var(--f-r);
+    padding:var(--sp-1);margin-block-start:var(--sp-1);
+    box-shadow:var(--f-shadow);font-family:inherit}
+  select.fi option{
+    display:flex;align-items:center;gap:var(--sp-2);
+    padding:var(--sp-2) var(--sp-3);border-radius:var(--r-sm);
+    font-size:var(--fs-body);line-height:var(--lh-body)}
+  select.fi option:hover{background:var(--f-soft)}
+  select.fi option:checked{background:var(--f-wash);color:var(--f-accent-text);font-weight:500}
+  /* the tint carries the selected state; the tick would sit in the text's place */
+  select.fi option::checkmark{display:none}
+}
 .logic select:focus,.logic input:focus{outline:none;border-color:var(--f-accent)}
 .logic .rm{color:var(--f-muted);padding:0 var(--sp-1)}
 .logic .rm:hover{color:var(--danger)}

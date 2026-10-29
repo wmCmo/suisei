@@ -55,14 +55,14 @@
 }
 /* A forced sheet also forces the UA's own widgets — scrollbars, selects,
    date pickers — so they don't arrive in the opposite theme. */
-.canvasform[data-bg="light"]{--f-bg:#fbfaf8;--f-fg:#15181a;--f-neutral-line:#d8d4ce;--f-soft:#e2dfda;--f-muted:#5d6165;--f-wash:var(--f-wash-light);color-scheme:light}
-.canvasform[data-bg="dark"]{--f-bg:#171c20;--f-fg:#f2efea;--f-neutral-line:#2b343b;--f-soft:#12171b;--f-muted:#a9b2b8;--f-wash:var(--f-wash-dark);--f-caret:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a9b2b8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");color-scheme:dark}
+.canvasform[data-bg="light"]{--f-bg:#fbfaf8;--f-fg:#15181a;--f-neutral-line:#d8d4ce;--f-soft:#e2dfda;--f-muted:#5d6165;--f-wash:var(--f-wash-light);--f-shadow:var(--f-shadow-light);color-scheme:light}
+.canvasform[data-bg="dark"]{--f-bg:#171c20;--f-fg:#f2efea;--f-neutral-line:#2b343b;--f-soft:#12171b;--f-muted:#a9b2b8;--f-wash:var(--f-wash-dark);--f-shadow:var(--f-shadow-dark);--f-caret:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a9b2b8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");color-scheme:dark}
 /* The accent is picked by whoever built the form, so it can be a deep colour
    that disappears as text on a dark sheet. Fills keep the chosen colour;
    text and small marks take a lifted version of it. */
 .canvasform[data-bg="dark"],
-:root[data-theme="dark"] .canvasform[data-bg="auto"]{--f-accent-text:color-mix(in srgb,var(--f-accent) 48%,#f2efea);--f-wash:var(--f-wash-dark);--f-caret:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a9b2b8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .canvasform[data-bg="auto"]{--f-accent-text:color-mix(in srgb,var(--f-accent) 48%,#f2efea);--f-wash:var(--f-wash-dark);--f-caret:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a9b2b8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}}
+:root[data-theme="dark"] .canvasform[data-bg="auto"]{--f-accent-text:color-mix(in srgb,var(--f-accent) 48%,#f2efea);--f-wash:var(--f-wash-dark);--f-shadow:var(--f-shadow-dark);--f-caret:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a9b2b8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .canvasform[data-bg="auto"]{--f-accent-text:color-mix(in srgb,var(--f-accent) 48%,#f2efea);--f-wash:var(--f-wash-dark);--f-shadow:var(--f-shadow-dark);--f-caret:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a9b2b8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}}
 
 /* The form sheet carries its own set, so a form can be themed
    independently of the app around it. */
@@ -75,6 +75,12 @@
      whatever happens to be behind it. This is the quiet step of --f-muted,
      mixed on purpose. */
   --f-faint:color-mix(in srgb,var(--f-muted) 58%,var(--f-bg));
+  /* --shadow belongs to the app and flips with the app's theme, so a form
+     forced light inside a dark app was lit from the wrong side. The sheet
+     carries its own, the way it carries its own wash. */
+  --f-shadow-light:0 1px 2px rgba(21,24,26,.07),0 10px 26px -14px rgba(21,24,26,.26);
+  --f-shadow-dark:0 1px 2px rgba(0,0,0,.4),0 12px 30px -16px rgba(0,0,0,.75);
+  --f-shadow:var(--f-shadow-light);
   --f-wash-light:color-mix(in srgb,var(--f-accent) 14%,var(--f-bg));
   --f-wash-dark:color-mix(in srgb,var(--f-accent) 40%,var(--f-bg));
   /* The wash follows the accent but the borders were a fixed warm grey, so a
