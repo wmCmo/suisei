@@ -59,3 +59,39 @@ reads like a bad URL. `gh auth switch --user wmCmo` first.
 GitHub Pages serves the previous `index.html` from the browser cache for a while
 after a deploy. After pushing a change to the root page, a hard refresh is the
 difference between "it did not deploy" and "it deployed fine".
+
+## The stylesheet lint does not see a token faded with opacity
+
+`scripts/build.mjs` rejects colour *literals* in `app.css` — a hex, an `rgb()`,
+an `hsl()`. It has nothing to say about `color:var(--f-muted);opacity:.52`,
+which produces a colour no token defines: the result depends on whatever is
+painted behind it, so the same declaration is a different colour on the sheet,
+on a panel and inside a selected block.
+
+Mix the step you want instead and name it, the way `--f-faint` is mixed from
+`--f-muted`. Reserve `opacity` for showing and hiding — `0` to `1` on the
+gutter, the option remove, the card close.
+
+Six of these are still in the file at the time of writing: the three
+`::placeholder` rules, `.stars`, `.stars button:hover` and `.hfrow .lg`.
+
+## `app.css` is not ordered general-then-specific, so ties go the wrong way
+
+Several components declare the general case *after* the exception, and since
+both usually have the same specificity, the general rule wins and the exception
+silently does nothing. `.logic .rm` sat below `.cgroup>.nested-rm`, and
+`select.fi` sat above the shared caret rule; in both cases the value that was
+meant to apply simply did not.
+
+Nothing warns about this — the stylesheet is valid and the lint is about
+tokens, not cascade. When adding an override, check where the base rule for
+that selector lives and put the override after it, then read the computed value
+back rather than trusting the file.
+
+## A floating element loses the form's tokens
+
+Anything appended to `document.body` is outside `.canvasform`, where every
+`--f-*` is defined. `background:var(--f-accent)` there is an invalid
+declaration, not a fallback, so the element renders with no background at all —
+correctly positioned and completely invisible. The drag drop-line did exactly
+this. Append to the form and position relative to it.
