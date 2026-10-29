@@ -17,7 +17,7 @@ svg{display:block}
 .bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;display:flex;align-items:center;gap:var(--sp-2);height:52px;
   background:var(--surface);border-bottom:1px solid var(--line);
   padding-left:max(var(--sp-3),env(safe-area-inset-left,0px));padding-right:max(var(--sp-3),env(safe-area-inset-right,0px))}
-.mark{display:flex;align-items:center;gap:var(--sp-2);font-weight:700;letter-spacing:-.02em}
+.mark{display:flex;align-items:center;gap:var(--sp-2);font-weight:700;letter-spacing:-.02em;text-decoration:none}
 .mark i{display:grid;place-items:center;width:22px;height:22px;border-radius:var(--r-sm);background:var(--accent);color:var(--accent-fg);font-style:normal;font-size:var(--fs-label);line-height:var(--lh-label);font-weight:700}
 .crumb{display:flex;align-items:center;gap:var(--sp-2);min-width:0;flex:1}
 .crumb .sep{color:var(--faint)}
@@ -199,7 +199,8 @@ button.opt{width:100%;text-align:left;font-size:var(--fs-body);line-height:var(-
 .done .tick{width:48px;height:48px;margin:0 auto var(--sp-4);border-radius:50%;background:var(--f-accent);color:var(--on-accent);display:grid;place-items:center}
 .done h2{font-size:var(--fs-h1);line-height:var(--lh-h1);letter-spacing:-.02em}
 .done p{color:var(--f-muted);margin:var(--sp-2) 0 var(--sp-5)}
-.badge{position:fixed;right:14px;bottom:14px;z-index:10;font-size:var(--fs-micro);line-height:var(--lh-micro);font-family:var(--mono);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-pill);padding:var(--sp-1) var(--sp-3);color:var(--muted)}
+.badge{position:fixed;right:14px;bottom:14px;z-index:10;font-size:var(--fs-micro);line-height:var(--lh-micro);font-family:var(--mono);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-pill);padding:var(--sp-1) var(--sp-3);color:var(--muted);text-decoration:none}
+.badge:hover{color:var(--accent);border-color:var(--accent)}
 
 /* ---------- responses ---------- */
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:var(--sp-2);margin-bottom:var(--sp-4)}

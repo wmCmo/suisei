@@ -565,7 +565,7 @@ function renderMissing(){
 function renderBar(){
   const f = form();
   if(state.view==='home' || !f){
-    return `<div class="mark"><i>水</i>Suisei</div><div class="crumb"></div>
+    return `<button class="mark" data-act="home" title="Your forms"><i>水</i>Suisei</button><div class="crumb"></div>
       <div class="tools">${accountBit()}</div>`;
   }
   const tabs = `<div class="seg hide-sm">
@@ -573,10 +573,10 @@ function renderBar(){
       <button data-act="tab" data-v="responses" aria-selected="${state.view==='responses'}">Responses</button>
     </div>`;
   if(state.view==='fill'){
-    return `<div class="mark"><i>水</i>Suisei</div><div class="crumb"><span class="sep">/</span><span>${esc(f.title)}</span></div>
+    return `<a class="mark" href="index.html" title="What is Suisei?"><i>水</i>Suisei</a><div class="crumb"><span class="sep">/</span><span>${esc(f.title)}</span></div>
       <div class="tools"><button class="btn" data-act="exit-fill">${I.back}<span class="hide-sm">Back to editor</span></button></div>`;
   }
-  return `<div class="mark"><i>水</i>Suisei</div>
+  return `<button class="mark" data-act="home" title="Your forms"><i>水</i>Suisei</button>
     <div class="crumb"><span class="sep">/</span>${f.emoji?emojiImg(f.emoji,"crumbicon"):""}<input id="ftitle-bar" value="${esc(f.title)}" data-bind="title" aria-label="Form name"></div>
     ${tabs}
     <div class="tools">
@@ -756,7 +756,7 @@ function renderFill(){
   const toggle = `<button class="runner" data-act="runner">${stepped ? 'Show every question at once' : 'Answer one question at a time'}</button>`;
   const shell = inner => `<div class="canvasform" data-bg="${t.bg}" data-align="${t.align}" data-runner="${stepped?'step':'grid'}" style="${themeVars(f)};min-height:calc(100vh - 52px)">
       ${total>1 && !state.done?`<div class="progress"><i style="width:${Math.round(at/total*100)}%"></i></div>`:''}
-      <div class="col">${inner}</div></div><div class="badge">Made with Suisei</div>`;
+      <div class="col">${inner}</div></div><a class="badge" href="index.html">Made with Suisei</a>`;
   if(state.done){
     return shell(`<div class="done"><div class="tick">${I.tick}</div><h2>${esc(pipe(t.thanks, f))}</h2>
       <p>Your response has been recorded.</p>
@@ -1090,6 +1090,7 @@ document.addEventListener('click', e=>{
     case 'emoji': state.panel = state.panel==='emoji'?null:'emoji'; state.emojiQ=''; render(); break;
     case 'pick-emoji': { f.emoji = a.dataset.p; state.panel=null; dirty(); render(); break; }
     case 'clear-emoji': { f.emoji = ''; state.panel=null; dirty(); render(); break; }
+    case 'home': go('home'); break;
     case 'account': state.panel = state.panel==='account'?null:'account'; render(); break;
     case 'google': {
       a.disabled = true;
