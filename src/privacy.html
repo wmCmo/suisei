@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="What Suisei stores, who can read it, and how to have it deleted.">
+<title>Suisei — Privacy</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Old+Mincho:wght@400;700&display=swap">
+<!--#tokens-->
+<!--#app-css-->
+<style>
+.doc{max-width:640px;margin:0 auto}
+.doc h1{font-size:var(--fs-display);line-height:var(--lh-display);letter-spacing:-.03em;margin:0 0 var(--sp-2)}
+.doc h2{font-size:var(--fs-h2);line-height:var(--lh-h2);letter-spacing:-.02em;margin:var(--sp-6) 0 var(--sp-2)}
+.doc p,.doc li{font-size:var(--fs-body);line-height:var(--lh-body);color:var(--fg)}
+.doc ul{padding-left:var(--sp-4);margin:var(--sp-2) 0}
+.doc li{margin-bottom:var(--sp-1)}
+.doc .sub{color:var(--muted);margin:0 0 var(--sp-6)}
+.doc a{color:var(--accent)}
+.doc code{font-family:var(--mono);font-size:var(--fs-caption);background:var(--sunk);padding:1px var(--sp-1);border-radius:var(--r-sm)}
+</style>
+</head>
+<body>
+<div class="bar"><div class="mark"><i>水</i>Suisei</div></div>
+<div class="stage"><div class="wrap"><div class="doc">
+
+<h1>Privacy</h1>
+<p class="sub">What Suisei stores, who can read it, and how to have it deleted.
+Last updated 29 October 2026.</p>
+
+<p>Suisei is a form builder. Two kinds of people use it: someone who
+<strong>builds</strong> a form, and someone who <strong>answers</strong> one. What is
+stored differs, so they are described separately.</p>
+
+<h2>If you answer a form</h2>
+<p>You do not need an account and are not asked to identify yourself. What is
+stored is:</p>
+<ul>
+  <li>the answers you type or choose;</li>
+  <li>any hidden-field values carried in the link you followed — these are set by
+      whoever shared the link, and are shown to you on request;</li>
+  <li>the time you submitted.</li>
+</ul>
+<p>Your answers are readable only by the person who owns that form. This is
+enforced by the database itself, not by the page: a request carrying anything
+other than that person's credentials is refused.</p>
+<p>No IP address, device identifier or location is recorded by Suisei, and
+nothing you type is kept before you press submit. Suisei's hosting providers
+keep their own server logs, which is outside its control.</p>
+
+<h2>If you build forms</h2>
+<p>Signing in uses your Google account. Suisei asks Google only for your email
+address and basic profile, and uses them to know which forms are yours. It
+cannot read your Google data, your mail, or anything else in your account.</p>
+<p>Your forms — their questions, logic and settings — are stored alongside your
+account identifier. Other people signed in to Suisei cannot see them unless you
+publish a form, and even then they see the form, never its answers.</p>
+
+<h2>What Suisei does not do</h2>
+<ul>
+  <li>No analytics, no tracking pixels, no advertising, no profiling.</li>
+  <li>No cookies are set. A sign-in is remembered in your browser's own storage
+      and is readable only by this site.</li>
+  <li>Nothing is sold, rented or shared with anyone for marketing.</li>
+</ul>
+
+<h2>Who else is involved</h2>
+<ul>
+  <li><strong>Supabase</strong> hosts the database and handles sign-in. Forms and
+      answers are stored there.</li>
+  <li><strong>Google</strong> is involved only when someone signs in to build.</li>
+  <li><strong>Google Fonts</strong> and <strong>jsDelivr</strong> serve the typefaces and
+      the icons. Loading a page requests files from them, which means they
+      receive your IP address, as any website's asset host does.</li>
+</ul>
+
+<h2>Keeping and deleting</h2>
+<p>A form and its answers are kept until the person who owns the form deletes
+them. Deleting a form deletes its answers with it. Someone who owns forms can
+delete their account's data by deleting their forms.</p>
+<p>If you answered someone's form and want that answer removed, ask the person
+who sent you the form — they control it. If you cannot reach them, write to the
+address below and it will be removed.</p>
+
+<h2>Contact</h2>
+<p>Write to <code>titan.zp4@gmail.com</code> about anything here, including a
+request to delete data.</p>
+
+<h2>Changes</h2>
+<p>Suisei is open source: every change to this page and to the code behind it is
+visible at <a href="https://github.com/wmCmo/suisei">github.com/wmCmo/suisei</a>.
+If this page changes materially, the date at the top changes with it.</p>
+
+</div></div></div>
+</body>
+</html>

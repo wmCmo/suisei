@@ -13,8 +13,8 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (f) => readFile(resolve(root, f), 'utf8');
 const strict = process.argv.includes('--strict');
 
-const [page, states, tokens, app, js] = await Promise.all([
-  read('src/page.html'), read('src/states.html'),
+const [page, states, privacy, tokens, app, js] = await Promise.all([
+  read('src/page.html'), read('src/states.html'), read('src/privacy.html'),
   read('src/tokens.css'), read('src/app.css'), read('src/app.js'),
 ]);
 
@@ -92,6 +92,7 @@ const fill = (shell) => shell
 const out = [
   ['index.html', fill(page)],
   ['states.html', fill(states)],
+  ['privacy.html', fill(privacy)],   // no app.js: it is a document, not the app
 ];
 for (const [name, html] of out) {
   await writeFile(resolve(root, name), html, 'utf8');
