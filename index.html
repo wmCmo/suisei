@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="Write a form the way you write a document. Blocks, conditional logic, hidden fields, responses.">
-<title>Rally Forms</title>
+<title>Suisei 水星</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Old+Mincho:wght@400;700&display=swap">
 <style>
 /* base:start — supplied by the artifact host; scripts/for-artifact.mjs strips it */
 :root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -16,31 +16,41 @@ img{max-width:100%}
 
 /* Layout: a fixed 52px command bar over a single scrolling stage; the stage is
    either a card grid (home), a 680px writing column (build / fill), or a full
-   width data surface (responses). Form canvases carry their own token set. */
+   width data surface (responses). Form canvases carry their own token set.
+
+   Colour is Suisei's: mercury teal against warm stone, solar for anything
+   live or unsaved. Surfaces are flat and edges are real — a control is
+   defined by its hairline, never by a shadow pretending to be depth. */
 :root{
-  --bg:#f6f5f8; --surface:#ffffff; --sunk:#efeef3; --line:#e4e2ea; --line-2:#d5d2de;
-  --fg:#17161d; --muted:#6c6880; --faint:#9a96ab;
-  --accent:#5b45e0; --accent-fg:#ffffff; --soft:#efecfd;
-  --ok:#1a7f4b; --warn:#b4530e;
-  --ui:'Instrument Sans',ui-sans-serif,system-ui,'Segoe UI',sans-serif;
-  --serif:'Source Serif 4',Georgia,serif;
-  --mono:'JetBrains Mono',ui-monospace,'Cascadia Mono',monospace;
-  --r:10px; --shadow:0 1px 2px rgba(23,22,29,.06),0 8px 24px -12px rgba(23,22,29,.18);
+  /* Daylight */
+  --bg:#eae8e4; --surface:#fbfaf8; --sunk:#e2dfda;
+  --line:#d8d4ce; --line-2:#b9b4ac; --line-strong:#86837d;
+  --fg:#15181a; --muted:#5d6165; --faint:#7a7d81;
+  --accent:#1f4d52; --accent-fg:#fbfaf8; --soft:#d8e3e2;
+  --ok:#1f4d52; --warn:#a85b14; --warn-soft:#f0e4d2; --danger:#a33224;
+  --ui:'Zen Kaku Gothic New','Hiragino Sans','Yu Gothic UI',system-ui,sans-serif;
+  --serif:'Zen Old Mincho','Hiragino Mincho ProN','Yu Mincho',Georgia,serif;
+  --mono:ui-monospace,'Cascadia Mono','SFMono-Regular',Menlo,monospace;
+  --r:9px; --r-lg:14px;
+  --shadow:0 1px 2px rgba(21,24,26,.07),0 10px 26px -14px rgba(21,24,26,.26);
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#111016; --surface:#1a1921; --sunk:#201f29; --line:#2c2a36; --line-2:#3a3747;
-  --fg:#f2f1f6; --muted:#a09cb4; --faint:#75718a;
-  --accent:#8f7bff; --accent-fg:#14121e; --soft:#241f3d;
-  --ok:#4ec08a; --warn:#e5934e;
-  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -14px rgba(0,0,0,.7);
+  /* Nightside */
+  --bg:#171c20; --surface:#202830; --sunk:#12171b;
+  --line:#2b343b; --line-2:#44505a; --line-strong:#64717a;
+  --fg:#f2efea; --muted:#a9b2b8; --faint:#6c767c;
+  --accent:#7fc3bd; --accent-fg:#0f1a1c; --soft:#24383c;
+  --ok:#7fc3bd; --warn:#f0a35c; --warn-soft:#3a2a16; --danger:#f09287;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 30px -16px rgba(0,0,0,.75);
   color-scheme:dark;
 }}
 :root[data-theme="dark"]{
-  --bg:#111016; --surface:#1a1921; --sunk:#201f29; --line:#2c2a36; --line-2:#3a3747;
-  --fg:#f2f1f6; --muted:#a09cb4; --faint:#75718a;
-  --accent:#8f7bff; --accent-fg:#14121e; --soft:#241f3d;
-  --ok:#4ec08a; --warn:#e5934e;
-  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -14px rgba(0,0,0,.7);
+  --bg:#171c20; --surface:#202830; --sunk:#12171b;
+  --line:#2b343b; --line-2:#44505a; --line-strong:#64717a;
+  --fg:#f2efea; --muted:#a9b2b8; --faint:#6c767c;
+  --accent:#7fc3bd; --accent-fg:#0f1a1c; --soft:#24383c;
+  --ok:#7fc3bd; --warn:#f0a35c; --warn-soft:#3a2a16; --danger:#f09287;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 30px -16px rgba(0,0,0,.75);
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -75,7 +85,7 @@ svg{display:block}
 .btn.primary:hover{background:var(--accent);filter:brightness(1.08)}
 .btn.ghost{border:1px solid var(--line);color:var(--fg)}
 .btn[disabled]{opacity:.45;pointer-events:none}
-.pill{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:999px;background:var(--sunk);color:var(--muted)}
+.pill{font-weight:500;font-size:11px;padding:2px 7px;border-radius:999px;background:var(--sunk);color:var(--muted)}
 .pill.live{background:var(--soft);color:var(--accent)}
 @media(max-width:720px){.hide-sm{display:none}}
 
@@ -105,10 +115,10 @@ svg{display:block}
 .empty strong{display:block;color:var(--fg);font-size:16px;margin-bottom:4px}
 
 /* ---------- form canvas (shared by builder + fill) ---------- */
-.canvasform{--f-bg:var(--surface);--f-fg:var(--fg);--f-line:var(--line);--f-soft:var(--sunk);--f-muted:var(--muted);--f-accent:#5b45e0;--f-r:10px;--f-font:var(--ui);
+.canvasform{--f-bg:var(--surface);--f-fg:var(--fg);--f-line:var(--line);--f-soft:var(--sunk);--f-muted:var(--muted);--f-accent:#1f4d52;--f-r:9px;--f-font:var(--ui);
   background:var(--f-bg);color:var(--f-fg);font-family:var(--f-font)}
-.canvasform[data-bg="light"]{--f-bg:#fff;--f-fg:#17161d;--f-line:#e3e1e9;--f-soft:#f4f3f7;--f-muted:#6c6880}
-.canvasform[data-bg="dark"]{--f-bg:#121118;--f-fg:#f3f2f7;--f-line:#2e2c3a;--f-soft:#1f1e28;--f-muted:#9d99b0}
+.canvasform[data-bg="light"]{--f-bg:#fbfaf8;--f-fg:#15181a;--f-line:#d8d4ce;--f-soft:#e2dfda;--f-muted:#5d6165}
+.canvasform[data-bg="dark"]{--f-bg:#171c20;--f-fg:#f2efea;--f-line:#2b343b;--f-soft:#12171b;--f-muted:#a9b2b8}
 .canvasform[data-align="center"] .col{text-align:center}
 .canvasform[data-align="center"] .opt{justify-content:center}
 .col{max-width:680px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:44px 64px}
@@ -133,7 +143,7 @@ svg{display:block}
 .blk[data-type="h1"] .lbl{font-size:25px;font-weight:700;letter-spacing:-.025em}
 .blk[data-type="h2"] .lbl{font-size:19.5px;font-weight:700;letter-spacing:-.02em}
 .blk[data-type="text"] .lbl{font-size:15.5px;font-weight:400;color:var(--f-muted)}
-.req{color:#e0533d;font-weight:600;margin-left:3px}
+.req{color:var(--danger);font-weight:600;margin-left:3px}
 .field{margin-top:7px}
 .fi{width:100%;background:var(--f-soft);border:1px solid transparent;border-bottom:1px solid var(--f-line);border-radius:var(--f-r) var(--f-r) 0 0;padding:9px 11px;font-size:15px;font-family:inherit;color:inherit}
 .fi::placeholder{color:var(--f-muted);opacity:.62}
@@ -165,22 +175,22 @@ textarea.fi{resize:vertical;min-height:76px;border-radius:var(--f-r)}
 .drop{border:1.5px dashed var(--f-line);border-radius:var(--f-r);padding:18px;text-align:center;color:var(--f-muted);font-size:13.5px}
 .rule{height:1px;background:var(--f-line);margin:14px 0}
 .logic{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:9px 0 3px;padding:9px 10px;border:1px solid var(--f-line);border-radius:var(--f-r);background:var(--f-soft)}
-.logic .lg{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--f-muted)}
+.logic .lg{font-weight:500;font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--f-muted)}
 .logic select,.logic input{background:var(--f-bg);border:1px solid var(--f-line);border-radius:7px;padding:4px 7px;font-size:12.5px;font-family:inherit;max-width:168px;min-width:0}
 .logic select:focus,.logic input:focus{outline:none;border-color:var(--f-accent)}
 .logic .rm{margin-left:auto;color:var(--f-muted);padding:0 4px}
-.logic .rm:hover{color:#e0533d}
+.logic .rm:hover{color:var(--danger)}
 .hfrow{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-top:20px;padding-top:14px;border-top:1px solid var(--f-line)}
 .hfrow code{font-family:var(--mono);font-size:11.5px;background:var(--f-soft);padding:3px 7px;border-radius:6px;color:var(--f-muted)}
 .hfrow button{font-size:12.5px;color:var(--f-muted)}
 .hfrow button:hover{color:var(--f-accent)}
-.hfrow .lg{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--f-muted);opacity:.75}
+.hfrow .lg{font-weight:500;font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--f-muted);opacity:.75}
 .hf{display:flex;align-items:center;gap:6px;margin-bottom:6px}
 .hf code{font-family:var(--mono);font-size:11.5px;background:var(--sunk);padding:5px 7px;border-radius:7px;white-space:nowrap;max-width:118px;overflow:hidden;text-overflow:ellipsis}
 .hf input{flex:1;min-width:0}
 .hf .rm{color:var(--muted);padding:0 4px}
 .hf .rm:hover{color:var(--warn)}
-.pagebreak{display:flex;align-items:center;gap:10px;margin:18px 0 6px;color:var(--f-muted);font-size:12px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em}
+.pagebreak{display:flex;align-items:center;gap:10px;margin:18px 0 6px;color:var(--f-muted);font-size:11.5px;font-weight:500;text-transform:uppercase;letter-spacing:.08em}
 .pagebreak::before,.pagebreak::after{content:"";flex:1;height:1px;background:var(--f-line)}
 .toolbar{position:absolute;right:0;top:-32px;z-index:5;display:flex;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:3px;box-shadow:var(--shadow)}
 .toolbar button{display:flex;align-items:center;gap:5px;padding:4px 8px;border-radius:6px;font-size:12.5px;color:var(--muted)}
@@ -192,7 +202,7 @@ textarea.fi{resize:vertical;min-height:76px;border-radius:var(--f-r)}
 .menu{position:absolute;z-index:60;width:272px;max-height:332px;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:6px}
 .menu .q{display:block;width:100%;background:var(--sunk);border:0;border-radius:7px;padding:7px 9px;font-size:13.5px;margin-bottom:5px}
 .menu .q:focus{outline:none}
-.menu .grp{font-size:10.5px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--faint);padding:8px 8px 4px}
+.menu .grp{font-size:10.5px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:8px 8px 4px}
 .menu .it{display:flex;align-items:center;gap:9px;width:100%;padding:7px 8px;border-radius:7px;font-size:13.8px;text-align:left}
 .menu .it .ic{flex:none;display:grid;place-items:center;width:25px;height:25px;border-radius:6px;background:var(--sunk);color:var(--muted)}
 .menu .it[aria-selected="true"]{background:var(--soft)}
@@ -205,7 +215,7 @@ textarea.fi{resize:vertical;min-height:76px;border-radius:var(--f-r)}
   background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:16px}
 .panel h4{margin:0 0 12px;font-size:14px;font-weight:600}
 .panel .fld{margin-bottom:14px}
-.panel label{display:block;font-size:11.5px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.07em;color:var(--faint);margin-bottom:6px}
+.panel label{display:block;font-size:11.5px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px}
 .panel input[type=text]{width:100%;background:var(--sunk);border:1px solid transparent;border-radius:8px;padding:7px 9px;font-size:14px}
 .panel input[type=text]:focus{outline:none;border-color:var(--accent)}
 .swatches{display:flex;gap:7px;flex-wrap:wrap}
@@ -223,8 +233,8 @@ textarea.fi{resize:vertical;min-height:76px;border-radius:var(--f-r)}
 .progress i{display:block;height:100%;background:var(--f-accent);transition:width .3s}
 .q{margin-bottom:26px}
 .q .ql{font-size:16.5px;font-weight:600;letter-spacing:-.012em;margin-bottom:8px}
-.q.bad .fi,.q.bad .opt{border-color:#e0533d}
-.q .err{color:#e0533d;font-size:12.8px;margin-top:6px}
+.q.bad .fi,.q.bad .opt{border-color:var(--danger)}
+.q .err{color:var(--danger);font-size:12.8px;margin-top:6px}
 .opt.pick{border-color:var(--f-accent);background:var(--f-soft)}
 .opt.pick .mk{border-color:var(--f-accent);background:var(--f-accent);color:#fff}
 button.opt{width:100%;text-align:left;font-size:15px}
@@ -242,7 +252,7 @@ button.opt{width:100%;text-align:left;font-size:15px}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px;margin-bottom:20px}
 .stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:13px 14px}
 .stat b{display:block;font-size:24px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-.stat span{font-size:11.5px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.07em;color:var(--faint)}
+.stat span{font-size:11.5px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
 .breakdown{display:grid;grid-template-columns:repeat(auto-fit,minmax(252px,1fr));gap:12px;margin-bottom:22px}
 .bd{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
 .bd h4{margin:0 0 10px;font-size:13.5px;font-weight:600}
@@ -254,7 +264,7 @@ button.opt{width:100%;text-align:left;font-size:15px}
 .tablewrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px}
 table{border-collapse:collapse;width:100%;font-size:13.5px}
 th,td{text-align:left;padding:10px 13px;border-bottom:1px solid var(--line);vertical-align:top;white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis}
-th{font-size:11.5px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--faint);font-weight:400;position:sticky;top:0;background:var(--surface)}
+th{font-size:11.5px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:400;position:sticky;top:0;background:var(--surface)}
 tbody tr:last-child td{border-bottom:0}
 tbody tr:hover{background:var(--sunk)}
 td.when{color:var(--muted);font-variant-numeric:tabular-nums}
@@ -332,8 +342,9 @@ const INPUTS = Object.keys(TYPES).filter(t=>TYPES[t].g==='Input');
 const isInput = t => TYPES[t] && TYPES[t].g==='Input';
 const PH = {short_text:'Type your answer…',long_text:'Type your answer…',number:'0',email:'name@example.com',phone:'+81 90 1234 5678',url:'https://',date:'',file:''};
 
-const ACCENTS = ['#5b45e0','#2563eb','#0d9488','#15803d','#d97706','#dc2626','#db2777','#111827'];
+const ACCENTS = ['#1f4d52','#a85b14','#1b1f22','#2f6b4f','#28527a','#8a3324','#6d3f63','#8c5a3c'];
 const FONTS = {sans:"var(--ui)",serif:"var(--serif)",mono:"var(--mono)"};
+const FONT_NAMES = {sans:'Gothic', serif:'Mincho', mono:'Mono'};
 
 function block(type, label, extra){
   const b = {id:uid('b'), type, label:label||'', required:false, placeholder:PH[type]||''};
@@ -392,7 +403,7 @@ const TEMPLATES = {
 };
 
 /* ============================ store ============================ */
-const LS = 'rally.v1';
+const LS = 'suisei.v1';
 const store = {
   db:null, user:null, downloads:null, canWrite:null, editor:false, ready:false,
   forms:{}, subs:[], remote:[], onSubs:null, unsubForms:null, unsubSubs:null,
@@ -639,7 +650,7 @@ function render(){
 function renderBar(){
   const f = form();
   if(state.view==='home' || !f){
-    return `<div class="mark"><i>R</i>Rally</div><div class="crumb"></div>
+    return `<div class="mark"><i>水</i>Suisei</div><div class="crumb"></div>
       <div class="tools"><span class="pill">${store.ready ? (store.db?'synced':'this device') : 'loading…'}</span></div>`;
   }
   const tabs = `<div class="seg hide-sm">
@@ -647,10 +658,10 @@ function renderBar(){
       <button data-act="tab" data-v="responses" aria-selected="${state.view==='responses'}">Responses</button>
     </div>`;
   if(state.view==='fill'){
-    return `<div class="mark"><i>R</i>Rally</div><div class="crumb"><span class="sep">/</span><span>${esc(f.title)}</span></div>
+    return `<div class="mark"><i>水</i>Suisei</div><div class="crumb"><span class="sep">/</span><span>${esc(f.title)}</span></div>
       <div class="tools"><button class="btn" data-act="exit-fill">${I.back}<span class="hide-sm">Back to editor</span></button></div>`;
   }
-  return `<div class="mark"><i>R</i>Rally</div>
+  return `<div class="mark"><i>水</i>Suisei</div>
     <div class="crumb"><span class="sep">/</span><input id="ftitle-bar" value="${esc(f.title)}" data-bind="title" aria-label="Form name"></div>
     ${tabs}
     <div class="tools">
@@ -809,6 +820,11 @@ function afterBuild(){
   }
 }
 function fit(t){ t.style.height='auto'; t.style.height = t.scrollHeight+'px'; }
+/* Zen Kaku's metrics differ from the fallback, so every auto-sized label is
+   measured again once the real face has swapped in. */
+if(document.fonts && document.fonts.ready){
+  document.fonts.ready.then(()=>{ document.querySelectorAll('textarea.lbl,.ftitle').forEach(fit); });
+}
 
 /* ============================ render: fill ============================ */
 function renderFill(){
@@ -817,7 +833,7 @@ function renderFill(){
   const t = f.theme;
   const shell = inner => `<div class="canvasform" data-bg="${t.bg}" data-align="${t.align}" style="${themeVars(f)};min-height:calc(100vh - 52px)">
       ${pages.length>1 && !state.done?`<div class="progress"><i style="width:${Math.round((state.page)/pages.length*100)}%"></i></div>`:''}
-      <div class="col">${inner}</div></div><div class="badge">Made with Rally</div>`;
+      <div class="col">${inner}</div></div><div class="badge">Made with Suisei</div>`;
   if(state.done){
     return shell(`<div class="done"><div class="tick">${I.tick}</div><h2>${esc(t.thanks)}</h2>
       <p>Your response has been recorded.</p>
@@ -947,7 +963,7 @@ function renderPanel(){
     const t = f.theme;
     p.innerHTML = `<h4>Customize</h4>
       <div class="fld"><label>Accent</label><div class="swatches">${ACCENTS.map(c=>`<button style="background:${c}" data-act="th" data-k="accent" data-v="${c}" aria-pressed="${t.accent===c}" aria-label="${c}"></button>`).join('')}</div></div>
-      <div class="fld"><label>Typeface</label><div class="chips">${['sans','serif','mono'].map(k=>`<button data-act="th" data-k="font" data-v="${k}" aria-pressed="${t.font===k}" style="font-family:${FONTS[k]}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div></div>
+      <div class="fld"><label>Typeface</label><div class="chips">${['sans','serif','mono'].map(k=>`<button data-act="th" data-k="font" data-v="${k}" aria-pressed="${t.font===k}" style="font-family:${FONTS[k]}">${FONT_NAMES[k]}</button>`).join('')}</div></div>
       <div class="fld"><label>Alignment</label><div class="chips">${['left','center'].map(k=>`<button data-act="th" data-k="align" data-v="${k}" aria-pressed="${t.align===k}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div></div>
       <div class="fld"><label>Background</label><div class="chips">${['auto','light','dark'].map(k=>`<button data-act="th" data-k="bg" data-v="${k}" aria-pressed="${t.bg===k}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div></div>
       <div class="fld"><label>Corners</label><div class="chips">${[[0,'Sharp'],[10,'Soft'],[999,'Pill']].map(([v,n])=>`<button data-act="th" data-k="radius" data-v="${v}" aria-pressed="${t.radius==v}">${n}</button>`).join('')}</div></div>

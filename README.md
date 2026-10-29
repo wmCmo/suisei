@@ -1,10 +1,22 @@
-# Rally Forms
+# Suisei 水星
 
 A form builder you write like a document. Type a question, press `/` to turn the
 line into a block, drag blocks around, branch with When/Then rules, share a link,
 read the responses.
 
 One file, no dependencies, no build step. `index.html` is the whole app.
+
+## Look
+
+Two themes, **Daylight** and **Nightside**: warm stone ground, ink, mercury teal
+for the brand and anything positive, solar orange for anything live or unsaved.
+Type is Zen Kaku Gothic New with Zen Old Mincho as the serif option, so a form
+with Japanese labels sets properly instead of falling back to whatever the OS
+supplies.
+
+Surfaces are flat and edges are real. A control is defined by its hairline, not
+by a shadow pretending to be depth — the palette comes from the Suisei design
+system, the neumorphic elevation in it deliberately does not.
 
 ```bash
 python -m http.server 8000     # or: npx serve .
@@ -45,7 +57,7 @@ Add them in the Share panel; they land in the response, show as `@name` columns
 in the table and the CSV, and can be used in logic conditions.
 
 ```
-https://you.github.io/rally/?form=fdemo1&source=newsletter&plan=pro
+https://you.github.io/suisei/?form=fdemo1&source=newsletter&plan=pro
 ```
 
 `?form=<id>` picks the form, everything else fills a hidden field of that name.
