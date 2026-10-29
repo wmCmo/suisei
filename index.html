@@ -1179,7 +1179,10 @@ function csv(){
 
 /* ============================ panels ============================ */
 function renderPanel(){
-  const f = form(); if(!f) return;
+  const f = form();
+  // the account panel belongs to the app, not to a form, so it opens on the
+  // workspace too
+  if(!f && state.panel !== 'account') return;
   const scrim = document.createElement('div'); scrim.className='scrim'; scrim.dataset.act='close-panel';
   const p = document.createElement('div'); p.className='panel';
   if(state.panel==='account'){
