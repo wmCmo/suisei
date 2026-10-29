@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Every block in every state, rendered by the real components.">
+<title>Suisei states</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Old+Mincho:wght@400;700&display=swap">
+<!--#tokens-->
+<!--#app-css-->
+<style>
+/* This page is a mirror, not a component of its own: everything below is
+   drawn by the real render functions, so it cannot drift from the app. */
+.sheets{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:var(--sp-5);align-items:start}
+.case{min-width:0}
+.case h2{font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:var(--sp-2)}
+.case > .canvasform{border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
+.case .col{padding-block:var(--sp-5)}
+.badge{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="lede"><div>
+    <h1>States</h1>
+    <p>Every block, both sheets, drawn by the app's own render functions.</p>
+  </div></div>
+  <div class="sheets" id="sheets"></div>
+</div>
+<!--#app-js-->
+<script>
+(function(){
+  const every = () => Object.keys(TYPES).map(t => block(t, TYPES[t].n));
+  const flatten = html => html.replace('min-height:calc(100vh - 52px)', 'min-height:0');
+
+  function make(title, bg, mode, selected){
+    const f = newForm('Every block', every());
+    f.theme.bg = bg;
+    f.logic = [{id:'r1', when:f.blocks[0].id, op:'is', value:'', do:'show', target:f.blocks[1].id}];
+    store.forms[f.id] = f;
+    state.formId = f.id;
+    state.sel = selected ? f.blocks[2].id : null;
+    state.page = 0; state.hist = []; state.answers = {}; state.bad = {}; state.done = false;
+    const wrap = document.createElement('div');
+    wrap.className = 'case';
+    wrap.innerHTML = '<h2>' + title + '</h2>' + flatten(mode === 'fill' ? renderFill() : renderBuild());
+    return wrap;
+  }
+
+  const sheets = document.getElementById('sheets');
+  [
+    ['Builder — Daylight', 'light', 'build', true],
+    ['Builder — Nightside', 'dark', 'build', true],
+    ['Form — Daylight', 'light', 'fill', false],
+    ['Form — Nightside', 'dark', 'fill', false],
+  ].forEach(args => sheets.appendChild(make(...args)));
+
+  document.querySelectorAll('textarea.lbl,.ftitle').forEach(fit);
+  if(document.fonts && document.fonts.ready){
+    document.fonts.ready.then(() => document.querySelectorAll('textarea.lbl,.ftitle').forEach(fit));
+  }
+})();
+</script>
+</body>
+</html>

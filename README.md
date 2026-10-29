@@ -95,17 +95,40 @@ in the client, and row-level security that lets anyone insert a submission while
 only you can select them. That maps onto what the hosted version already enforces.
 Firebase, Cloudflare D1 or a dozen lines of Express fit the same shape.
 
-## Publishing to claude.ai
+## How it's put together
 
-The artifact platform wraps the page in its own `<!doctype>`/`<head>`/`<body>`,
-so it wants a fragment rather than a full document:
-
-```bash
-node scripts/for-artifact.mjs    # -> dist/artifact.html
+```
+src/tokens.css   decisions: colour, spacing, radius. Custom properties only.
+src/app.css      selectors. Refers to tokens, never restates them.
+src/app.js       the app
+src/page.html    the document shell
+src/states.html  a mirror of every component, drawn by the real functions
 ```
 
-Publish that file as the artifact. `index.html` stays the source of truth; `dist/`
-is generated and git-ignored.
+`tokens.css` holds one kind of line and `app.css` holds the other. The test for
+where something belongs: **would a designer change it?** Mercury teal, the 4px
+spacing scale, the radius steps are decisions, so they are tokens.
+`position:absolute`, `flex:1`, the 680px writing column describe how a widget is
+wired, so they live in `app.css`.
+
+That split is enforced, not just intended. The build refuses to ship a colour
+literal found outside `tokens.css`:
+
+```bash
+node scripts/build.mjs             # builds, errors on literals
+node scripts/build.mjs --warnings  # also lists values that should come from a scale
+node scripts/build.mjs --strict    # fails on those too
+```
+
+Colour is clean. Spacing and type are not yet: the build currently reports
+around 160 values still written by hand, which is the honest measure of how much
+of the design system the code actually follows. There is no type scale at all
+yet — that is the next gap to close.
+
+`states.html` renders every block type, in both sheets, in the builder and in
+the form, using the app's own render functions rather than copied markup. One
+screenshot of it shows the whole surface, so a change can be checked everywhere
+instead of only where it was made.
 
 ## Deploying
 
@@ -122,6 +145,11 @@ page, email notifications.
 ## Files
 
 ```
-index.html                 the entire app
-scripts/for-artifact.mjs   index.html -> dist/artifact.html for claude.ai
+src/                 the source (see above)
+scripts/build.mjs    build + the token lint
+index.html           built; deploy this
+states.html          built; the component mirror
 ```
+
+`index.html` and `states.html` are build output and are committed, so the repo
+can be served as-is with nothing installed.

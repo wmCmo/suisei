@@ -1,0 +1,62 @@
+/* Decisions only. Every rule in this file declares custom properties and
+   nothing else -- that is the test for whether a line belongs here. If a
+   designer would change it, it is a token; if it describes how a widget is
+   wired, it goes in app.css. The build refuses to ship a colour literal or
+   a raw spacing value found outside this file. */
+/* base:end */
+
+/* Layout: a fixed 52px command bar over a single scrolling stage; the stage is
+   either a card grid (home), a 680px writing column (build / fill), or a full
+   width data surface (responses). Form canvases carry their own token set.
+
+   Colour is Suisei's: mercury teal against warm stone, solar for anything
+   live or unsaved. Surfaces are flat and edges are real — a control is
+   defined by its hairline, never by a shadow pretending to be depth. */
+:root{
+  /* Daylight */
+  --bg:#eae8e4; --surface:#fbfaf8; --sunk:#e2dfda;
+  --line:#d8d4ce; --line-2:#b9b4ac; --line-strong:#86837d;
+  --fg:#15181a; --muted:#5d6165; --faint:#7a7d81;
+  --accent:#1f4d52; --accent-fg:#fbfaf8; --soft:#d8e3e2;
+  --ok:#1f4d52; --warn:#a85b14; --warn-soft:#f0e4d2; --danger:#a33224;
+  --ui:'Zen Kaku Gothic New','Hiragino Sans','Yu Gothic UI',system-ui,sans-serif;
+  --serif:'Zen Old Mincho','Hiragino Mincho ProN','Yu Mincho',Georgia,serif;
+  --mono:ui-monospace,'Cascadia Mono','SFMono-Regular',Menlo,monospace;
+  --r:9px; --r-lg:14px;
+  --on-accent:#fbfaf8; --scrim:rgba(21,24,26,.34); --shadow-sm:0 1px 2px rgba(21,24,26,.08);
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px;
+  --shadow:0 1px 2px rgba(21,24,26,.07),0 10px 26px -14px rgba(21,24,26,.26);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  /* Nightside */
+  --bg:#171c20; --surface:#202830; --sunk:#12171b;
+  --line:#2b343b; --line-2:#44505a; --line-strong:#64717a;
+  --fg:#f2efea; --muted:#a9b2b8; --faint:#6c767c;
+  --accent:#7fc3bd; --accent-fg:#0f1a1c; --soft:#24383c;
+  --ok:#7fc3bd; --warn:#f0a35c; --warn-soft:#3a2a16; --danger:#f09287; --on-accent:#fbfaf8; --scrim:rgba(0,0,0,.5); --shadow-sm:0 1px 2px rgba(0,0,0,.35);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 30px -16px rgba(0,0,0,.75);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#171c20; --surface:#202830; --sunk:#12171b;
+  --line:#2b343b; --line-2:#44505a; --line-strong:#64717a;
+  --fg:#f2efea; --muted:#a9b2b8; --faint:#6c767c;
+  --accent:#7fc3bd; --accent-fg:#0f1a1c; --soft:#24383c;
+  --ok:#7fc3bd; --warn:#f0a35c; --warn-soft:#3a2a16; --danger:#f09287; --on-accent:#fbfaf8; --scrim:rgba(0,0,0,.5); --shadow-sm:0 1px 2px rgba(0,0,0,.35);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 30px -16px rgba(0,0,0,.75);
+  color-scheme:dark;
+}
+/* A forced sheet also forces the UA's own widgets — scrollbars, selects,
+   date pickers — so they don't arrive in the opposite theme. */
+.canvasform[data-bg="light"]{--f-bg:#fbfaf8;--f-fg:#15181a;--f-line:#d8d4ce;--f-soft:#e2dfda;--f-muted:#5d6165;--f-wash:#d8e3e2;color-scheme:light}
+.canvasform[data-bg="dark"]{--f-bg:#171c20;--f-fg:#f2efea;--f-line:#2b343b;--f-soft:#12171b;--f-muted:#a9b2b8;--f-wash:#24383c;color-scheme:dark}
+/* The accent is picked by whoever built the form, so it can be a deep colour
+   that disappears as text on a dark sheet. Fills keep the chosen colour;
+   text and small marks take a lifted version of it. */
+.canvasform[data-bg="dark"],
+:root[data-theme="dark"] .canvasform[data-bg="auto"]{--f-accent-text:color-mix(in srgb,var(--f-accent) 48%,#f2efea)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .canvasform[data-bg="auto"]{--f-accent-text:color-mix(in srgb,var(--f-accent) 48%,#f2efea)}}
+
+/* The form sheet carries its own set, so a form can be themed
+   independently of the app around it. */
+.canvasform{--f-bg:var(--surface);--f-fg:var(--fg);--f-line:var(--line);--f-soft:var(--sunk);--f-muted:var(--muted);--f-wash:var(--soft);--f-accent:#1f4d52;--f-accent-text:var(--f-accent);--f-r:9px;--f-font:var(--ui)}
