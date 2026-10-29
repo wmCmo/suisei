@@ -705,8 +705,9 @@ const store = {
     el.textContent = this.saveLabel();
     el.className = 'pill' + (this.saveState === 'error' ? ' bad' : '');
   },
-  saveForm(f){
+  saveForm(f, key){
     if(this.visiting[f.id]) return;      // someone else's form: not ours to keep or save
+    undoStack.record(f, key);
     f.updatedAt = Date.now();
     this.forms[f.id] = f;
     this.writeLocal();
@@ -791,6 +792,62 @@ const form = () => formById(state.formId);
    the responses and the share panel are all theirs with it. Without this the
    bar offered Unpublish to a stranger and then told them it had worked. */
 const canEdit = f => !!f && !store.visiting[f.id];
+
+/* Undo.
+
+   Every change to a form goes through store.saveForm, so this only has to
+   watch one function — but that function runs on every keystroke, and a
+   snapshot per call would give one undo step per character. So: typing in the
+   same place within the window extends the step already in progress, and
+   anything else (a block added, an option deleted, a theme change) starts a
+   new one. The call sites pass a key for the first kind and nothing for the
+   second.
+
+   base always holds the document as it was before the edit in progress, which
+   is what makes this work from inside saveForm: by the time saveForm runs the
+   object has already been mutated, so the thing worth keeping is the copy
+   taken last time. */
+const UNDO_COALESCE = 600, UNDO_LIMIT = 80;
+const undoStack = {
+  id:null, past:[], future:[], base:null, lastKey:null, lastAt:0, applying:false,
+  reset(f){
+    this.id = f ? f.id : null;
+    this.past = []; this.future = [];
+    this.base = f ? JSON.stringify(f) : null;
+    this.lastKey = null; this.lastAt = 0;
+  },
+  record(f, key){
+    if(this.applying) return;
+    if(this.id !== f.id){ this.reset(f); return; }
+    const now = Date.now();
+    const extend = key && key === this.lastKey && (now - this.lastAt) < UNDO_COALESCE;
+    this.lastKey = key || null; this.lastAt = now;
+    if(extend) return;
+    if(this.base !== null){
+      this.past.push(this.base);
+      if(this.past.length > UNDO_LIMIT) this.past.shift();
+    }
+    this.base = JSON.stringify(f);
+    this.future.length = 0;            // editing after an undo forks the timeline
+  },
+  step(from, to){
+    const f = form();
+    if(!f || !from.length) return false;
+    to.push(JSON.stringify(f));
+    const doc = JSON.parse(from.pop());
+    this.base = JSON.stringify(doc);
+    this.lastKey = null;
+    this.applying = true;              // restoring is not itself an edit
+    store.forms[doc.id] = doc;
+    store.saveForm(doc);
+    this.applying = false;
+    if(!doc.blocks.some(b => b.id === state.sel)) state.sel = null;
+    render();
+    return true;
+  },
+  undo(){ return this.step(this.past, this.future); },
+  redo(){ return this.step(this.future, this.past); },
+};
 const bar = document.getElementById('bar');
 const stage = document.getElementById('stage');
 const layer = document.getElementById('layer');
@@ -820,7 +877,7 @@ function go(view, id){
   render();
 }
 function swapUrl(to){
-  try{ if(history.replaceState){ history.replaceState(null, '', to); return true; } }catch(e){}
+  try{ if(window.history.replaceState){ window.history.replaceState(null, '', to); return true; } }catch(e){}
   return false;
 }
 function pagesOf(f){
@@ -1793,16 +1850,16 @@ function dlCsv(){
 document.addEventListener('input', e=>{
   const t = e.target, f = form();
   if(t.dataset.bind==='title' && f){
-    f.title = t.value; store.saveForm(f); state.dirtyUntil = Date.now()+4000;
+    f.title = t.value; store.saveForm(f, 'title'); state.dirtyUntil = Date.now()+4000;
     if(t.classList.contains('ftitle')){ fit(t); const b = document.getElementById('ftitle-bar'); if(b) b.value = t.value; }
     return;
   }
   if(t.hasAttribute && t.hasAttribute('data-accent') && f){
-    f.theme.accent = t.value; store.saveForm(f); state.dirtyUntil = Date.now()+4000;
+    f.theme.accent = t.value; store.saveForm(f, 'accent'); state.dirtyUntil = Date.now()+4000;
     document.querySelectorAll('.canvasform').forEach(el => el.style.setProperty('--f-accent', t.value));
     return;
   }
-  if(t.dataset.th && f){ f.theme[t.dataset.th] = t.value; store.saveForm(f); state.dirtyUntil = Date.now()+4000; return; }
+  if(t.dataset.th && f){ f.theme[t.dataset.th] = t.value; store.saveForm(f, 'th:'+t.dataset.th); state.dirtyUntil = Date.now()+4000; return; }
   if(t.id === 'emoji-q'){
     state.emojiQ = t.value;
     const g = document.getElementById('emoji-grid');
@@ -1842,7 +1899,8 @@ document.addEventListener('input', e=>{
     }
     else if(t.dataset.field==='opt'){ const o = b.options.find(o=>o.id===t.dataset.opt); if(o) o.text = t.value; }
     else b[t.dataset.field] = t.value;
-    store.saveForm(f); state.dirtyUntil = Date.now()+4000;
+    store.saveForm(f, 'blk:'+t.dataset.block+':'+(t.dataset.opt || t.dataset.field));
+    state.dirtyUntil = Date.now()+4000;
     return;
   }
   if(t.dataset.a!==undefined && state.view==='fill'){
@@ -2081,6 +2139,20 @@ if(bar && stage) store.boot();
       }
       render(); return;
     }
+  /* Undo comes before everything else, including the slash menu: if a stray
+     block got inserted, the menu is exactly the state you want out of. It
+     takes over the browser's own undo inside a field, which is the point —
+     a caret-level undo and a document-level one fighting each other is worse
+     than either. */
+  if((e.ctrlKey || e.metaKey) && /^[zyZY]$/.test(e.key)){
+    if(state.view !== 'build' || !canEdit(f)) return;
+    e.preventDefault();
+    closeMenu();
+    const redo = e.key === 'y' || e.key === 'Y' || e.shiftKey;
+    const moved = redo ? undoStack.redo() : undoStack.undo();
+    if(!moved) toast(redo ? 'Nothing to redo' : 'Nothing to undo');
+    return;
+  }
 </script>
 <script>
 (function(){
