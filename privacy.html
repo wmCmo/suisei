@@ -242,7 +242,8 @@ select.fi{height:40px;padding-right:var(--sp-2)}
 .toolbar .div{width:1px;align-self:stretch;background:var(--f-line);margin:0 2px}
 
 /* ---------- slash menu ---------- */
-.menu{position:absolute;z-index:60;width:272px;max-height:332px;overflow:auto;background:var(--f-bg);color:var(--f-fg);font-family:var(--ui);border:1px solid var(--f-line);border-radius:var(--r-lg);box-shadow:var(--shadow);padding:var(--sp-1)}
+/* fixed, so it is positioned in the same coordinates the trigger reports */
+.menu{position:fixed;z-index:60;width:272px;max-height:332px;overflow:auto;background:var(--f-bg);color:var(--f-fg);font-family:var(--ui);border:1px solid var(--f-line);border-radius:var(--r-lg);box-shadow:var(--shadow);padding:var(--sp-1)}
 .menu .q{display:block;width:100%;background:var(--f-soft);color:inherit;border:0;border-radius:var(--r-sm);padding:var(--sp-2) var(--sp-2);font-size:var(--fs-label);line-height:var(--lh-label);margin-bottom:var(--sp-1)}
 .menu .q:focus{outline:none}
 .menu .grp{font-size:var(--fs-micro);line-height:var(--lh-micro);font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--f-muted);padding:var(--sp-2) var(--sp-2) var(--sp-1)}
@@ -340,6 +341,9 @@ td.when{color:var(--muted);font-variant-numeric:tabular-nums}
 .egrid button:hover{background:var(--sunk)}
 .egrid img{width:24px;height:24px}
 .pubrow{display:flex;align-items:center;gap:var(--sp-2);justify-content:space-between}
+
+/* catches a click that misses the menu, so it cannot reach a field below */
+.menu-scrim{position:fixed;inset:0;z-index:59}
 </style>
 <style>
 .doc{max-width:640px;margin:0 auto}

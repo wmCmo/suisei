@@ -977,7 +977,7 @@ function openMenu(kind, opts){
   state.menu = Object.assign({kind, q:'', idx:0}, opts);
   drawMenu();
 }
-function closeMenu(){ state.menu = null; layer.querySelectorAll('.menu').forEach(n=>n.remove()); }
+function closeMenu(){ state.menu = null; layer.querySelectorAll('.menu,.menu-scrim').forEach(n=>n.remove()); }
 function menuItems(){
   const m = state.menu || {};
   const q = (m.q||'').toLowerCase();
@@ -989,12 +989,22 @@ function menuItems(){
       .filter(x => !q || (x.label||'').toLowerCase().includes(q))
       .map(x => ({k:x.id, n:x.label || TYPES[x.type].n, ic:TYPES[x.type].i, grp:'Earlier answers'}));
   }
-  return Object.keys(TYPES)
+  // "number" must reach Number before Phone number: exact, then prefix, then
+  // anywhere, and registry order inside each tier
+  const rank = k => {
+    const n = TYPES[k].n.toLowerCase();
+    if(n === q || k === q) return 0;
+    if(n.startsWith(q) || k.startsWith(q)) return 1;
+    return 2;
+  };
+  const order = Object.keys(TYPES);
+  return order
     .filter(k => !q || TYPES[k].n.toLowerCase().includes(q) || k.includes(q))
-    .map(k => ({k, n:TYPES[k].n, ic:TYPES[k].i, grp:TYPES[k].g}));
+    .map(k => ({k, n:TYPES[k].n, ic:TYPES[k].i, grp:TYPES[k].g, _r:q?rank(k):0}))
+    .sort((a, b) => a._r - b._r || order.indexOf(a.k) - order.indexOf(b.k));
 }
 function drawMenu(){
-  layer.querySelectorAll('.menu').forEach(n=>n.remove());
+  layer.querySelectorAll('.menu,.menu-scrim').forEach(n=>n.remove());
   const m = state.menu; if(!m) return;
   const items = menuItems();
   if(m.idx >= items.length) m.idx = Math.max(0, items.length-1);
@@ -1002,20 +1012,33 @@ function drawMenu(){
   el.className = 'menu canvasform';
   const mf = form();
   if(mf){ el.setAttribute('data-bg', mf.theme.bg); el.setAttribute('style', themeVars(mf)); }
-  let html = m.kind==='type' ? '' : `<input class="q" placeholder="${m.kind==='pipe'?'Search questions…':'Search blocks…'}" value="${esc(m.q)}" aria-label="Search blocks">`;
+  const ownBox = m.kind === 'insert';
+  let html = ownBox ? `<input class="q" placeholder="Search blocks…" value="${esc(m.q)}" aria-label="Search blocks">` : '';
   let grp = '';
   items.forEach((it,i)=>{
     if(it.grp!==grp){ grp = it.grp; html += `<div class="grp">${grp}</div>`; }
     html += `<button class="it" data-act="pick-type" data-k="${it.k}" aria-selected="${i===m.idx}"><span class="ic">${I[it.ic]}</span>${esc(it.n)}</button>`;
   });
-  if(!items.length) html = (m.kind==='type'?'':html) + `<div class="none">${m.kind==='pipe'?'No earlier question to reference':'No block matches “'+esc(m.q)+'”'}</div>`;
+  if(!items.length) html = html + `<div class="none">${m.kind==='pipe'?'No earlier question to reference':'No block matches “'+esc(m.q)+'”'}</div>`;
   el.innerHTML = html;
+  // a click that misses the menu closes it instead of reaching the field
+  // underneath, which is how a question's text once landed inside an option
+  const scrim = document.createElement('div');
+  scrim.className = 'menu-scrim';
+  layer.appendChild(scrim);
   layer.appendChild(el);
+
+  // The menu is fixed, so it is placed in viewport coordinates throughout. The
+  // old code added scrollY to a viewport rect and then clamped the result
+  // against the viewport height, which threw the menu far above its trigger
+  // on a scrolled page.
   const r = m.rect;
-  const top = Math.min(window.innerHeight - 348, r.bottom + window.scrollY + 6);
-  el.style.top = Math.max(60, top) + 'px';
-  el.style.left = Math.max(10, Math.min(window.innerWidth - 284, r.left)) + 'px';
-  if(m.kind!=='type'){ const q = el.querySelector('.q'); if(q){ q.focus(); q.setSelectionRange(q.value.length,q.value.length); } }
+  const h = Math.min(el.offsetHeight || 332, 332);
+  const below = window.innerHeight - r.bottom - 8;
+  const top = below >= h || below >= r.top - 8 ? r.bottom + 6 : r.top - h - 6;
+  el.style.top = Math.round(Math.max(8, Math.min(window.innerHeight - h - 8, top))) + 'px';
+  el.style.left = Math.round(Math.max(8, Math.min(window.innerWidth - el.offsetWidth - 8, r.left))) + 'px';
+  if(ownBox){ const q = el.querySelector('.q'); if(q){ q.focus(); q.setSelectionRange(q.value.length,q.value.length); } }
   const on = el.querySelector('[aria-selected="true"]'); if(on) on.scrollIntoView({block:'nearest'});
 }
 function applyPipe(srcId){
@@ -1053,6 +1076,9 @@ function applyType(k){
 
 /* ============================ events ============================ */
 document.addEventListener('click', e=>{
+  // a click on the scrim only dismisses the menu; it must not also reach the
+  // editor behind it
+  if(e.target.classList && e.target.classList.contains('menu-scrim')){ closeMenu(); return; }
   const a = e.target.closest('[data-act]');
   if(!a){
     if(!e.target.closest('.menu')) closeMenu();
@@ -1080,7 +1106,7 @@ document.addEventListener('click', e=>{
     case 'open-fill': go('fill', a.dataset.id); break;
     case 'del-form': {
       const id = a.dataset.id;
-      if(state.confirmDel!==id){ state.confirmDel = id; render(); setTimeout(()=>{ if(state.confirmDel===id){ state.confirmDel=null; render(); } }, 3500); }
+      if(state.confirmDel!==id){ state.confirmDel = id; render(); setTimeout(()=>{ if(state.confirmDel===id){ state.confirmDel=null; render(); } }, 6000); }
       else { store.deleteForm(id); state.confirmDel=null; render(); toast('Form removed'); }
       break;
     }
@@ -1300,7 +1326,9 @@ document.addEventListener('keydown', e=>{
     const items = menuItems();
     if(e.key==='ArrowDown'){ e.preventDefault(); state.menu.idx = Math.min(items.length-1, state.menu.idx+1); drawMenu(); return; }
     if(e.key==='ArrowUp'){ e.preventDefault(); state.menu.idx = Math.max(0, state.menu.idx-1); drawMenu(); return; }
-    if(e.key==='Enter'){ e.preventDefault(); if(items[state.menu.idx]) applyType(items[state.menu.idx]); return; }
+    // applyType takes the key, not the descriptor the list is built from;
+    // the click path passes dataset.k, which is why the mouse worked and Enter did not
+    if(e.key==='Enter'){ e.preventDefault(); const pick = items[state.menu.idx]; if(pick) applyType(pick.k); return; }
     if(e.key==='Escape'){ e.preventDefault(); const m=state.menu; closeMenu();
       if(m.slash){ const b = f.blocks.find(x=>x.id===m.blockId); if(b){ b.label=''; state.focus={id:b.id,field:'label'}; render(); } }
       return; }
