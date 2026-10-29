@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="What Suisei stores, who can read it, and how to have it deleted.">
 <title>Suisei — Privacy</title>
+<link rel="icon" href="favicon.ico" sizes="32x32">
+<link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Suisei">
 <meta property="og:title" content="Suisei — what the app stores">
@@ -17,6 +20,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Old+Mincho:wght@400;700&family=Noto+Sans+Thai:wght@400;500;700&family=Noto+Serif+Thai:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@900&text=%E6%B0%B4&display=swap">
 <style>
 /* Decisions only. Every rule in this file declares custom properties and
    nothing else -- that is the test for whether a line belongs here. If a
@@ -42,6 +46,9 @@
   --ui:'Zen Kaku Gothic New','Noto Sans Thai','Hiragino Sans','Yu Gothic UI',system-ui,sans-serif;
   --serif:'Zen Old Mincho','Noto Serif Thai','Hiragino Mincho ProN','Yu Mincho',Georgia,serif;
   --mono:ui-monospace,'Cascadia Mono','SFMono-Regular',Menlo,'Noto Sans Thai',monospace;
+  /* the 水 of the wordmark only. Loaded as a one-glyph subset, so this costs
+     about a kilobyte and never touches the text faces above. */
+  --mark:'Noto Sans JP','Zen Kaku Gothic New',system-ui,sans-serif;
   --bar-h:52px;
   --r-sm:6px; --r:9px; --r-lg:14px; --r-pill:999px;
   --on-accent:#fbfaf8; --scrim:rgba(21,24,26,.34); --shadow-sm:0 1px 2px rgba(21,24,26,.08);
@@ -119,7 +126,8 @@ svg{display:block}
   padding-left:max(var(--sp-3),env(safe-area-inset-left,0px));padding-right:max(var(--sp-3),env(safe-area-inset-right,0px))}
 /* an anchor with no colour of its own gets the browser's visited purple */
 .mark{display:flex;align-items:center;gap:var(--sp-2);font-weight:700;letter-spacing:-.02em;text-decoration:none;color:inherit}
-.mark i{display:grid;place-items:center;width:22px;height:22px;border-radius:var(--r-sm);background:var(--accent);color:var(--accent-fg);font-style:normal;font-size:var(--fs-label);line-height:var(--lh-label);font-weight:700}
+.mark i{display:grid;place-items:center;width:22px;height:22px;border-radius:var(--r-sm);background:var(--accent);color:var(--accent-fg);font-style:normal;font-size:var(--fs-label);line-height:var(--lh-label);
+  font-family:var(--mark);font-weight:900}
 .crumb{display:flex;align-items:center;gap:var(--sp-2);min-width:0;flex:1}
 .crumb .sep{color:var(--faint)}
 .crumb input{min-width:0;flex:1;max-width:320px;background:none;border:1px solid transparent;border-radius:var(--r-sm);padding:var(--sp-1) var(--sp-2);font-weight:500}

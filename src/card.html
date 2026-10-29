@@ -3,7 +3,7 @@
   The share card. This file is the generator, not a page: it draws card.png at
   exactly 1200x630 on a canvas, so the output does not depend on the window.
 
-  To redraw it:  node scripts/card.mjs
+  To redraw it:  node scripts/render.mjs
   which serves the repo, opens this with ?save, and writes card.png to the root.
   Open it without ?save to look at the card on its own.
 
@@ -15,7 +15,7 @@
 <meta charset="utf-8">
 <title>Suisei share card</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Noto+Sans+JP:wght@900&display=swap">
 <style>
   html,body{margin:0;height:100%;background:#0d1113;display:grid;place-items:center}
   canvas{max-width:100%;height:auto;box-shadow:0 10px 40px rgba(0,0,0,.5)}
@@ -65,7 +65,7 @@ function draw(g){
   roundRect(g, L, 134, 72, 72, 16);
   g.fillStyle = ACCENT; g.fill();
   g.fillStyle = ON_ACCENT;
-  g.font = '700 44px ' + UI;
+  g.font = "900 44px 'Noto Sans JP', 'Zen Kaku Gothic New', sans-serif";
   g.textAlign = 'center'; g.textBaseline = 'middle';
   g.fillText('水', L + 36, 134 + 38);
 
@@ -91,14 +91,15 @@ function draw(g){
   await Promise.all([
     document.fonts.load('700 66px "Zen Kaku Gothic New"'),
     document.fonts.load('400 30px "Zen Kaku Gothic New"'),
-    document.fonts.load('700 44px "Zen Kaku Gothic New"', '水'),
+    document.fonts.load('900 44px "Noto Sans JP"', '水'),
   ]);
   await document.fonts.ready;
   draw(g);
 
   if (new URLSearchParams(location.search).has('save')) {
     const blob = await new Promise(r => c.toBlob(r, 'image/png'));
-    const res = await fetch('/__card', {method: 'POST', body: blob});
+    const res = await fetch('/__write/card.png', {method: 'POST', body: blob});
+    await fetch('/__done', {method: 'POST'});
     document.title = res.ok ? 'saved ' + blob.size : 'failed';
   }
 })();
