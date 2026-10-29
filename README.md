@@ -83,6 +83,26 @@ button label and thank-you message, per form, live in the editor.
 **Responses** — count, latest, average completion, per-question breakdown bars,
 the full table, Copy CSV.
 
+## Signing in
+
+Building a form writes to the project, so it needs a session; answering one
+does not. Sign-in is Google, through Supabase Auth, which needs three things
+set once:
+
+1. **Google Cloud Console** — APIs & Services → Credentials → Create OAuth
+   client ID → Web application. Authorized redirect URI:
+   `https://<project-ref>.supabase.co/auth/v1/callback`. Add
+   `http://localhost:8000` to the JavaScript origins for local work.
+2. **Supabase** — Authentication → Providers → Google, on, with the client ID
+   and secret from step 1.
+3. **Supabase** — Authentication → URL Configuration → Site URL and the
+   redirect allow-list must include wherever the page is served from
+   (`http://localhost:8000/**` locally).
+
+Until that is done the Sign in button returns a provider error and the app
+keeps forms in this browser. Nothing else breaks: a form that is already in
+the project still loads and still collects answers from anyone.
+
 ## Where the data lives
 
 **In the browser, and nowhere else.** Forms and responses go to `localStorage`.
