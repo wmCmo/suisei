@@ -188,9 +188,36 @@ instead of only where it was made.
 
 ## Deploying
 
-Static hosting, nothing to build. GitHub Pages: push, then Settings → Pages →
-Deploy from branch → `main` / root. Netlify, Vercel, Cloudflare Pages: drop the
-folder in. The only network requests the page makes are to Google Fonts.
+Live at **https://wmcmo.github.io/suisei/**, served by GitHub Pages from `main`
+at the repository root. `index.html` is committed pre-built, so Pages has
+nothing to build.
+
+A static host is enough because nothing here runs on a server. In particular
+sign-in works on one: the browser is redirected to Google, Google redirects to
+*Supabase's* callback, and Supabase performs the token exchange with the client
+secret on its own machines. The host only ever serves files, which is also why
+the secret never has to exist anywhere near this repository.
+
+The `github.io` warning you may have read about Google sign-in is about cookies
+— `github.io` is on the Public Suffix List, so browsers refuse cookies set on
+it, which breaks cookie-based sessions. This app keeps its session in
+localStorage and sets no cookies, so it does not apply.
+
+Deploying anywhere new means updating two places, and the one people expect to
+change does not:
+
+```
+Google Cloud -> Clients -> Suisei web
+  Authorized JavaScript origins  += https://<origin>
+  Authorized redirect URI         unchanged; it points at Supabase
+
+Supabase -> Authentication -> URL Configuration
+  Site URL                        https://<origin>/<path>/
+  Redirect allow-list            += https://<origin>/<path>/**
+```
+
+Miss the Supabase one and sign-in appears to work, then returns you signed out
+with no error anywhere.
 
 ## Not built
 
