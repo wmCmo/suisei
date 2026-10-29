@@ -6,7 +6,8 @@
 -- here make redundant rather than conflicting.
 --
 -- The access model is the one the app already enforced elsewhere:
---   forms        anyone may read (a respondent has to load the form)
+--   forms        anyone may read a published form; the owner always reads
+--                their own, published or not
 --                only the owner may write
 --   submissions  anyone may insert (that is what a public form is)
 --                only the form's owner may read them back
@@ -15,6 +16,7 @@ create table if not exists public.forms (
   id          text primary key,
   owner       uuid not null default auth.uid() references auth.users (id) on delete cascade,
   title       text not null default 'Untitled form',
+  published   boolean not null default false,
   doc         jsonb not null,              -- the whole form: blocks, logic, hidden, theme
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
@@ -28,6 +30,9 @@ create table if not exists public.submissions (
   created_at  timestamptz not null default now()
 );
 
+create index if not exists forms_owner_updated
+  on public.forms (owner, updated_at desc);
+
 create index if not exists submissions_form_id_created_at
   on public.submissions (form_id, created_at desc);
 
@@ -35,16 +40,19 @@ create index if not exists submissions_form_id_created_at
 alter table public.forms       enable row level security;
 alter table public.submissions enable row level security;
 
-drop policy if exists forms_read_all      on public.forms;
+drop policy if exists forms_read_all              on public.forms;
+drop policy if exists forms_read_published_or_own on public.forms;
 drop policy if exists forms_write_owner   on public.forms;
 drop policy if exists forms_update_owner  on public.forms;
 drop policy if exists forms_delete_owner  on public.forms;
 drop policy if exists subs_insert_any     on public.submissions;
 drop policy if exists subs_read_owner     on public.submissions;
 
--- a form is public to read: that is how someone fills it
-create policy forms_read_all on public.forms
-  for select using (true);
+-- a published form is public to read: that is how someone fills it. An
+-- unpublished one is visible to its owner alone, which also stops it
+-- collecting answers, since the insert policy below has to see the form.
+create policy forms_read_published_or_own on public.forms
+  for select using (published or owner = auth.uid());
 
 create policy forms_write_owner on public.forms
   for insert with check (auth.uid() = owner);

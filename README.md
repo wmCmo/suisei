@@ -120,6 +120,27 @@ Until that is done the Sign in button returns a provider error and the app
 keeps forms in this browser. Nothing else breaks: a form that is already in
 the project still loads and still collects answers from anyone.
 
+## Draft and published
+
+A form is a draft when you make it. While it is a draft its link opens nothing
+for anyone but you, and no answer can be recorded against it — the row is
+invisible to a stranger, and the insert policy has to see the form before it
+will accept an answer. Publish it from the Share panel and the link starts
+working; unpublish and it stops.
+
+This is enforced in Postgres, not in the page:
+
+```sql
+create policy forms_read_published_or_own on public.forms
+  for select using (published or owner = auth.uid());
+```
+
+Before this, a form's link was the only thing keeping it unlisted: the
+publishable key ships inside the page, so anyone holding it could read any row
+in the table, drafts included. Run `supabase/migrations/2026-10-29_published.sql`
+once on an existing project; it backfills every form that already exists as
+published, so nothing already shared stops working.
+
 ## Where the data lives
 
 **In the browser, and nowhere else.** Forms and responses go to `localStorage`.

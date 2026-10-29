@@ -337,6 +337,7 @@ td.when{color:var(--muted);font-variant-numeric:tabular-nums}
 .egrid button{display:grid;place-items:center;padding:var(--sp-1);border-radius:var(--r-sm)}
 .egrid button:hover{background:var(--sunk)}
 .egrid img{width:24px;height:24px}
+.pubrow{display:flex;align-items:center;gap:var(--sp-2);justify-content:space-between}
 </style>
 <style>
 /* This page is a mirror, not a component of its own: everything below is
@@ -439,7 +440,7 @@ function block(type, label, extra){
   return Object.assign(b, extra||{});
 }
 function newForm(title, blocks, logic){
-  return {id:uid('f'), title:title||'Untitled form', emoji:'', blocks:blocks||[block('short_text','')], logic:logic||[], hidden:[],
+  return {id:uid('f'), title:title||'Untitled form', emoji:'', published:false, blocks:blocks||[block('short_text','')], logic:logic||[], hidden:[],
     theme:{accent:ACCENTS[0], font:'sans', align:'left', radius:10, bg:'auto', runner:'grid', submit:'Submit', thanks:'Thanks for filling this out.'},
     createdAt:Date.now(), updatedAt:Date.now()};
 }
@@ -507,7 +508,7 @@ const rowToSub = r => ({id:r.id, formId:r.form_id, createdAt:new Date(r.created_
                         answers:r.answers||{}, hidden:r.hidden||{}});
 
 const store = {
-  sb, user:null, ready:false, downloads:null, editor:false, offline:!sb,
+  sb, user:null, ready:false, downloads:null, editor:false, offline:!sb, hasPublished:null,
   forms:{}, subs:[], remote:[], counts:{}, onSubs:null, onSubsId:null, lastError:null,
   readLocal(){ try{ return JSON.parse(localStorage.getItem(LS)||'{}') }catch(e){ return {} } },
   writeLocal(){ try{ localStorage.setItem(LS, JSON.stringify({forms:this.forms, subs:this.subs.filter(s=>s.local)})) }catch(e){} },
@@ -542,14 +543,25 @@ const store = {
      only read a respondent ever needs. */
   async loadForms(){
     if(!sb || !this.user) return;
-    const {data, error} = await sb.from('forms').select('id,doc,updated_at')
+    // the published column arrives with a migration; until it is run the app
+    // behaves as it did before rather than failing every read and write
+    const cols = this.hasPublished === false ? 'id,doc,updated_at' : 'id,doc,updated_at,published';
+    let {data, error} = await sb.from('forms').select(cols)
       .eq('owner', this.user.id).order('updated_at',{ascending:false});
+    if(error && /published/.test(error.message||'')){
+      this.hasPublished = false;
+      ({data, error} = await sb.from('forms').select('id,doc,updated_at')
+        .eq('owner', this.user.id).order('updated_at',{ascending:false}));
+    } else if(!error && this.hasPublished === null){
+      this.hasPublished = true;
+    }
     if(error){ this.lastError = error.message; render(); return; }
     this.lastError = null;
     const seen = new Set();
     (data||[]).forEach(row => {
       const f = row.doc; if(!f || !f.id) return;
       seen.add(f.id);
+      if('published' in row) f.published = !!row.published;
       if(f.id === state.formId && Date.now() < state.dirtyUntil) return;  // mid-edit
       this.forms[f.id] = f;
     });
@@ -561,6 +573,7 @@ const store = {
     const {data} = await sb.from('forms').select('doc').eq('id', id).limit(1);
     const doc = data && data[0] && data[0].doc;
     if(doc && doc.id){ this.forms[doc.id] = doc; render(); }
+    else { state.missing = id; render(); }        // unpublished, or gone
   },
 
   async loadCounts(){
@@ -580,8 +593,14 @@ const store = {
     this._t = setTimeout(async () => {
       if(!sb || !this.user) return;                     // signed out: this device only
       const doc = JSON.parse(JSON.stringify(f));
-      const {error} = await sb.from('forms')
-        .upsert({id:f.id, owner:this.user.id, title:f.title||'Untitled form', doc}, {onConflict:'id'});
+      const row = {id:f.id, owner:this.user.id, title:f.title||'Untitled form', doc};
+      if(this.hasPublished !== false) row.published = !!f.published;
+      let {error} = await sb.from('forms').upsert(row, {onConflict:'id'});
+      if(error && /published/.test(error.message||'')){
+        this.hasPublished = false;
+        delete row.published;
+        ({error} = await sb.from('forms').upsert(row, {onConflict:'id'}));
+      }
       if(error){ this.lastError = error.message; console.warn('save', error); render(); }
       else if(this.lastError){ this.lastError = null; render(); }
     }, 600);
@@ -640,7 +659,7 @@ const store = {
 /* ============================ app state ============================ */
 const state = {view:'home', formId:null, sel:null, focus:null, menu:null, panel:null,
   dirtyUntil:0, page:0, step:0, hist:[], answers:{}, bad:{}, done:false, rows:null, confirmDel:null,
-  hidden:{}, testHidden:{}, emojiQ:''};
+  hidden:{}, testHidden:{}, emojiQ:'', missing:null};
 const form = () => store.forms[state.formId];
 const bar = document.getElementById('bar');
 const stage = document.getElementById('stage');
@@ -651,6 +670,7 @@ function toast(msg){
   layer.appendChild(t); setTimeout(()=>t.remove(), 2600);
 }
 function go(view, id){
+  state.missing = null;
   if(id!==undefined && id!==state.formId) state.testHidden = {};
   state.view = view; if(id!==undefined) state.formId = id;
   state.sel = null; state.menu = null; state.panel = null; state.confirmDel = null;
@@ -880,6 +900,13 @@ function accountBit(){
 /* ============================ render: shell ============================ */
 function render(){
   const f = form();
+  // a link naming a form this visitor cannot see says so, rather than
+  // dropping them on a workspace that is not theirs
+  if(state.missing && !store.forms[state.missing]){
+    bar.innerHTML = renderBar(); stage.innerHTML = renderMissing();
+    layer.querySelectorAll('.panel,.scrim').forEach(n=>n.remove());
+    return;
+  }
   if(state.view!=='home' && !f && store.ready){ state.view='home'; state.formId=null; }
   bar.innerHTML = renderBar();
   stage.innerHTML =
@@ -890,6 +917,12 @@ function render(){
   layer.querySelectorAll('.panel,.scrim').forEach(n=>n.remove());
   if(state.panel) renderPanel();
   if(state.view==='build') afterBuild();
+}
+function renderMissing(){
+  return `<div class="wrap"><div class="empty" style="margin-top:var(--sp-8)">
+    <strong>This form is not available</strong>
+    It may be a draft, or the link may be wrong. If you were sent it, ask whoever
+    shared it to publish the form.</div></div>`;
 }
 function renderBar(){
   const f = form();
@@ -1272,7 +1305,17 @@ function renderPanel(){
         <input type="text" data-hf="${esc(h.name)}" value="${esc((state.testHidden||{})[h.name]||'')}" placeholder="test value" aria-label="Value for ${esc(h.name)}">
         <button class="rm" data-act="del-field" data-name="${esc(h.name)}" title="Remove field">×</button>
       </div>`).join('');
+    const live = !!f.published;
     p.innerHTML = `<h4>Share this form</h4>
+      <div class="fld">
+        <div class="pubrow">
+          <span class="pill ${live?'live':''}">${live?'Live':'Draft'}</span>
+          <button class="btn ${live?'ghost':'primary'}" data-act="publish">${live?'Unpublish':'Publish'}</button>
+        </div>
+        <p class="note" style="margin-top:var(--sp-2)">${live
+          ? 'Anyone with the link can open this form and answer it.'
+          : 'While it is a draft the link opens nothing, for anyone but you, and no answer can be recorded against it.'}</p>
+      </div>
       <div class="fld"><label>Form link</label><div class="link"><code id="sharelink">${esc(linkFor(f, state.testHidden))}</code><button class="btn ghost" data-act="copy-link">${I.copy}</button></div></div>
       <p class="note">${STANDALONE
         ? `Send this as it is. <code style="font-family:var(--mono)">?form=${f.id}</code> picks the form; the fields below ride along as ordinary query parameters.`
@@ -1423,6 +1466,12 @@ document.addEventListener('click', e=>{
       const k = a.dataset.k; let v = a.dataset.v;
       if(k==='radius') v = Number(v);
       f.theme[k] = v; dirty(); render(); break;
+    }
+    case 'publish': {
+      f.published = !f.published;
+      dirty(); render();
+      toast(f.published ? 'Published — the link works now' : 'Unpublished — the link stops working');
+      break;
     }
     case 'copy-link': {
       const txt = document.getElementById('sharelink').textContent;
