@@ -525,7 +525,9 @@ const rowToSub = r => ({id:r.id, formId:r.form_id, createdAt:new Date(r.created_
 
 const store = {
   sb, user:null, ready:false, downloads:null, editor:false, offline:!sb, hasPublished:null, saveState:'idle',
-  forms:{}, subs:[], remote:[], counts:{}, onSubs:null, onSubsId:null, lastError:null,
+  // forms is the workspace: yours, and local-only drafts. visiting holds a form
+  // fetched because someone is filling it — never listed, never persisted.
+  forms:{}, visiting:{}, subs:[], remote:[], counts:{}, onSubs:null, onSubsId:null, lastError:null,
   readLocal(){ try{ return JSON.parse(localStorage.getItem(LS)||'{}') }catch(e){ return {} } },
   writeLocal(){ try{ localStorage.setItem(LS, JSON.stringify({forms:this.forms, subs:this.subs.filter(s=>s.local)})) }catch(e){} },
 
@@ -547,6 +549,7 @@ const store = {
     });
     this.ready = true;
     await this.loadForms();
+    await this.pruneVisits();
     this.loadCounts();
     const wanted = readLink().token;
     if(wanted.startsWith('form-')) await this.loadForm(wanted.slice(5));
@@ -580,16 +583,33 @@ const store = {
       if('published' in row) f.published = !!row.published;
       if(f.id === state.formId && Date.now() < state.dirtyUntil) return;  // mid-edit
       this.forms[f.id] = f;
+      delete this.visiting[f.id];          // yours: it belongs in the workspace
     });
+    this.owned = seen;
     this.writeLocal();
   },
 
   async loadForm(id){
-    if(!sb || !id || this.forms[id]) return;
+    if(!sb || !id || this.forms[id] || this.visiting[id]) return;
     const {data} = await sb.from('forms').select('doc').eq('id', id).limit(1);
     const doc = data && data[0] && data[0].doc;
-    if(doc && doc.id){ this.forms[doc.id] = doc; render(); }
+    if(doc && doc.id){ this.visiting[doc.id] = doc; render(); }
     else { state.missing = id; render(); }        // unpublished, or gone
+  },
+
+  /* Filling a form used to leave it in the workspace: the same bucket held
+     both, and one writeLocal persisted the visit. Anything the server will
+     hand us that is not ours was a visit, so drop it; a form the server does
+     not have at all is a local-only draft and stays. */
+  async pruneVisits(){
+    if(!sb) return;
+    const owned = this.owned || new Set();
+    const ids = Object.keys(this.forms).filter(id => !owned.has(id));
+    if(!ids.length) return;
+    const {data, error} = await sb.from('forms').select('id').in('id', ids);
+    if(error || !data || !data.length) return;
+    data.forEach(r => { delete this.forms[r.id]; delete this.counts[r.id]; });
+    this.writeLocal(); render();
   },
 
   async loadCounts(){
@@ -614,6 +634,7 @@ const store = {
     el.className = 'pill' + (this.saveState === 'error' ? ' bad' : '');
   },
   saveForm(f){
+    if(this.visiting[f.id]) return;      // someone else's form: not ours to keep or save
     f.updatedAt = Date.now();
     this.forms[f.id] = f;
     this.writeLocal();
@@ -688,8 +709,11 @@ const store = {
 /* ============================ app state ============================ */
 const state = {view:'home', formId:null, sel:null, focus:null, menu:null, panel:null,
   dirtyUntil:0, page:0, step:0, hist:[], answers:{}, bad:{}, done:false, rows:null, confirmDel:null,
-  hidden:{}, testHidden:{}, emojiQ:'', missing:null};
-const form = () => store.forms[state.formId];
+  hidden:{}, testHidden:{}, emojiQ:'', missing:null, runner:null};
+// a form is either yours or one you are visiting; everything that resolves an
+// id must go through here, or a respondent's link lands on an empty workspace
+const formById = id => store.forms[id] || store.visiting[id];
+const form = () => formById(state.formId);
 const bar = document.getElementById('bar');
 const stage = document.getElementById('stage');
 const layer = document.getElementById('layer');
@@ -700,7 +724,7 @@ function toast(msg){
 }
 function go(view, id){
   state.missing = null;
-  if(id!==undefined && id!==state.formId) state.testHidden = {};
+  if(id!==undefined && id!==state.formId){ state.testHidden = {}; state.runner = null; }
   state.view = view; if(id!==undefined) state.formId = id;
   state.sel = null; state.menu = null; state.panel = null; state.confirmDel = null;
   if(view==='fill'){ state.page=0; state.step=0; state.hist=[]; state.answers={}; state.bad={}; state.done=false; }
@@ -960,7 +984,7 @@ function render(){
   const f = form();
   // a link naming a form this visitor cannot see says so, rather than
   // dropping them on a workspace that is not theirs
-  if(state.missing && !store.forms[state.missing]){
+  if(state.missing && !formById(state.missing)){
     bar.innerHTML = renderBar(); stage.innerHTML = renderMissing();
     layer.querySelectorAll('.panel,.scrim').forEach(n=>n.remove());
     return;
@@ -1180,7 +1204,7 @@ if(document.fonts && document.fonts.ready){
 function renderFill(){
   const f = form();
   const t = f.theme;
-  const stepped = t.runner === 'step';
+  const stepped = (state.runner || t.runner) === 'step';
   const pages = pagesOf(f);
   const steps = stepped ? stepsOf(f) : null;
   const total = stepped ? steps.length : pages.length;
@@ -1562,7 +1586,7 @@ document.addEventListener('click', e=>{
     case 'th': {
       const k = a.dataset.k; let v = a.dataset.v;
       if(k==='radius') v = Number(v);
-      f.theme[k] = v; dirty(); render(); break;
+      f.theme[k] = v; if(k==='runner') state.runner = null; dirty(); render(); break;
     }
     case 'publish': {
       f.published = !f.published;
@@ -1639,7 +1663,9 @@ document.addEventListener('click', e=>{
       break;
     }
     case 'again': state.page=0; state.step=0; state.hist=[]; state.answers={}; state.bad={}; state.done=false; render(); break;
-    case 'runner': { f.theme.runner = f.theme.runner==='step'?'grid':'step'; state.page=0; state.step=0; state.hist=[]; state.bad={}; dirty(); render(); break; }
+    // a reader asking for every question at once is choosing a view, not
+    // editing the form: it must not save, least of all on someone else's copy
+    case 'runner': { state.runner = (state.runner||f.theme.runner)==='step'?'grid':'step'; state.page=0; state.step=0; state.hist=[]; state.bad={}; render(); break; }
     /* responses */
     case 'copy-csv': copy(csv()); break;
     case 'dl-csv': dlCsv(); break;
@@ -1923,10 +1949,11 @@ function fromHash(){
   const token = readLink().token;
   if(token.startsWith('form-')){
     const id = token.slice(5);
-    if(store.forms[id]){
+    const f = formById(id);
+    if(f){
       state.formId = id; state.view='fill'; state.page=0; state.step=0; state.hist=[];
       state.answers={}; state.bad={}; state.done=false;
-      state.hidden = hiddenValues(store.forms[id]);
+      state.hidden = hiddenValues(f);
       return true;
     }
   }
