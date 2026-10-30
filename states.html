@@ -457,8 +457,31 @@ table{border-collapse:collapse;width:100%;font-size:var(--fs-label);line-height:
 th,td{text-align:left;padding:var(--sp-2) var(--sp-3);border-bottom:1px solid var(--line);vertical-align:top;white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis}
 /* the remove sits in its own column at the end, out of the way until the row
    is under the cursor. This table is app chrome, not a form sheet, so it takes
-   the app's tokens rather than the --f-* ones. */
-td.act,th:last-child{width:1%;text-align:right}
+   the app's tokens rather than the --f-* ones. Sticky, because a form with a
+   dozen questions is wider than the screen and the column would otherwise be
+   a horizontal scroll away. */
+td.act,th:last-child{position:sticky;right:0;z-index:1;width:1%;text-align:right;background:var(--surface);border-left:1px solid var(--line)}
+.subrow{cursor:pointer}
+.subrow:hover td{background:var(--sunk)}
+
+/* one response, read as a page rather than a row */
+.subsheet{position:fixed;z-index:55;left:50%;top:50%;translate:-50% -50%;
+  width:min(620px,calc(100vw - 28px));max-height:min(80vh,760px);
+  display:flex;flex-direction:column;overflow:hidden;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow)}
+.subhead{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3) var(--sp-4);border-bottom:1px solid var(--line)}
+.subhead>div:first-child{flex:1;min-width:0}
+.sub-of{display:block;color:var(--muted);font-size:var(--fs-micro);line-height:var(--lh-micro)}
+.subnav{display:flex;gap:var(--sp-1);flex:none}
+.subnav .btn{padding:var(--sp-1) var(--sp-3)}
+.subbody{overflow:auto;padding:var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-4)}
+.sf{display:grid;gap:var(--sp-1)}
+.sl{font-size:var(--fs-micro);line-height:var(--lh-micro);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+/* pre-wrap and anywhere: the table truncates, this is the place that does not */
+.sv{font-size:var(--fs-body);line-height:var(--lh-body);white-space:pre-wrap;overflow-wrap:anywhere}
+.sv.none{color:var(--faint)}
+.sv code{font-family:var(--mono);font-size:var(--fs-micro);line-height:var(--lh-micro);background:var(--sunk);padding:var(--sp-1) var(--sp-2);border-radius:var(--r-sm)}
+.subfoot{padding:var(--sp-3) var(--sp-4);border-top:1px solid var(--line);display:flex;justify-content:flex-end}
 .rowrm{opacity:0;color:var(--muted);padding:var(--sp-1) var(--sp-2);border-radius:var(--r-sm);font-size:var(--fs-micro);line-height:var(--lh-micro)}
 tr:hover .rowrm,.rowrm:focus-visible{opacity:1}
 .rowrm:hover{background:var(--soft);color:var(--danger)}
@@ -913,7 +936,7 @@ const store = {
 
 /* ============================ app state ============================ */
 const state = {view:'home', formId:null, sel:null, focus:null, menu:null, panel:null,
-  dirtyUntil:0, page:0, step:0, hist:[], answers:{}, bad:{}, done:false, rows:null, confirmDel:null, confirmSub:null,
+  dirtyUntil:0, page:0, step:0, hist:[], answers:{}, bad:{}, done:false, rows:null, confirmDel:null, confirmSub:null, openSub:null,
   hidden:{}, testHidden:{}, emojiQ:'', missing:null, runner:null};
 // a form is either yours or one you are visiting; everything that resolves an
 // id must go through here, or a respondent's link lands on an empty workspace
@@ -993,7 +1016,7 @@ function go(view, id){
   if((view==='build' || view==='responses') && !canEdit(formById(id===undefined ? state.formId : id))) view = 'fill';
   if(id!==undefined && id!==state.formId){ state.testHidden = {}; state.runner = null; }
   state.view = view; if(id!==undefined) state.formId = id;
-  state.sel = null; state.menu = null; state.panel = null; state.confirmDel = null; state.confirmSub = null;
+  state.sel = null; state.menu = null; state.panel = null; state.confirmDel = null; state.confirmSub = null; state.openSub = null;
   if(view==='fill'){ state.page=0; state.step=0; state.hist=[]; state.answers={}; state.bad={}; state.done=false; }
   if(view==='responses'){ state.rows = null; store.watchSubs(state.formId, rows=>{ state.rows = rows; if(state.view==='responses') render(); }); }
   else store.stopWatch();
@@ -1344,7 +1367,7 @@ function render(){
   // dropping them on a workspace that is not theirs
   if(state.missing && !formById(state.missing)){
     bar.innerHTML = renderBar(); stage.innerHTML = renderMissing();
-    layer.querySelectorAll('.panel,.scrim').forEach(n=>n.remove());
+    layer.querySelectorAll('.panel,.scrim,.subsheet').forEach(n=>n.remove());
     return;
   }
   if(state.view!=='home' && !f && store.ready){ state.view='home'; state.formId=null; }
@@ -1357,8 +1380,9 @@ function render(){
     state.view==='build' ? renderBuild() :
     state.view==='fill' ? renderFill() :
     state.view==='responses' ? renderResponses() : '';
-  layer.querySelectorAll('.panel,.scrim').forEach(n=>n.remove());
+  layer.querySelectorAll('.panel,.scrim,.subsheet').forEach(n=>n.remove());
   if(state.panel) renderPanel();
+  if(state.openSub && state.view==='responses') renderSub();
   const directed = !!state.focus;      // read it before afterBuild() clears it
   if(state.view==='build') afterBuild();
   restoreFocus(directed ? null : snap);
@@ -1386,7 +1410,7 @@ function renderBar(){
         : accountBit()}</div>`;
   }
   return `<button class="mark" data-act="home" title="Your forms"><i>水</i>Suisei</button>
-    <div class="crumb"><span class="sep">/</span>${f.emoji?emojiImg(f.emoji,"crumbicon"):""}<input id="ftitle-bar" value="${esc(f.title)}" data-bind="title" aria-label="Form name"></div>
+    <div class="crumb"><span class="sep">/</span>${f.emoji?emojiImg(f.emoji,"crumbicon"):""}<input id="ftitle-bar" value="${esc(f.title)}" ${state.view==='responses'?'readonly ':'data-bind="title" '}aria-label="Form name"></div>
     ${tabs}
     <div class="tools">
       <span class="pill" id="savestate">${store.saveLabel()}</span>
@@ -1413,6 +1437,7 @@ function renderHome(){
       <div class="meta"><span>${n} response${n===1?'':'s'}</span><span>·</span><span>${qs} question${qs===1?'':'s'}</span>${pages>1?`<span>·</span><span>${pages} pages</span>`:''}</div>
       <div class="row" style="margin-top:2px">
         <button class="btn" style="padding:4px 8px" data-act="open" data-id="${f.id}">Edit</button>
+        <button class="btn" style="padding:4px 8px" data-act="open-subs" data-id="${f.id}">Responses</button>
         <button class="btn" style="padding:4px 8px" data-act="open-fill" data-id="${f.id}">Open form</button>
       </div>
     </div>`;
@@ -1707,7 +1732,7 @@ function renderQ(b, big){
 /* ============================ render: responses ============================ */
 function renderResponses(){
   const f = form();
-  const rows = (state.rows||[]).slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  const rows = state.rows ? subList() : [];
   const cols = f.blocks.filter(b=>isInput(b.type));
   if(state.rows===null) return `<div class="wrap"><div class="empty">Loading responses…</div></div>`;
   if(!rows.length) return `<div class="wrap">
@@ -1735,7 +1760,7 @@ function renderResponses(){
   const hcols = fields(f);
   const cell = v => `<td title="${esc(v)}">${esc(v)||'<span style="color:var(--faint)">—</span>'}</td>`;
   const head = `<tr><th>Submitted</th>${cols.map(b=>`<th>${esc(b.label||TYPES[b.type].n)}</th>`).join('')}${hcols.map(h=>`<th>@${esc(h.name)}</th>`).join('')}<th></th></tr>`;
-  const body = rows.map(r=>`<tr><td class="when">${fmt(new Date(r.createdAt))}${r.local?' <span class="pill">local</span>':''}</td>${cols.map(b=>cell(cellText(b,r))).join('')}${hcols.map(h=>cell((r.hidden||{})[h.name]||'')).join('')}<td class="act"><button class="rowrm" data-act="del-sub" data-id="${r.id}">${state.confirmSub===r.id?'Delete?':'Remove'}</button></td></tr>`).join('');
+  const body = rows.map(r=>`<tr data-act="open-sub" data-id="${r.id}" class="subrow"><td class="when">${fmt(new Date(r.createdAt))}${r.local?' <span class="pill">local</span>':''}</td>${cols.map(b=>cell(cellText(b,r))).join('')}${hcols.map(h=>cell((r.hidden||{})[h.name]||'')).join('')}<td class="act"><button class="rowrm" data-act="del-sub" data-id="${r.id}">${state.confirmSub===r.id?'Delete?':'Remove'}</button></td></tr>`).join('');
   return `<div class="wrap">
     <div class="lede"><div><h1>Responses</h1><p>${rows.length} submission${rows.length===1?'':'s'} to “${esc(f.title)}”.</p></div>
       <div class="tools">
@@ -1786,6 +1811,55 @@ function emojiGrid(){
   return shown.map(e => `<button data-act="pick-emoji" data-p="${esc(e.p)}" title="${esc(e.n)}">${emojiImg(e.p,'')}</button>`).join('')
     + (rest ? `<div class="none">${rest} more — search to narrow them down</div>` : '');
 }
+/* One response, read rather than scanned. The table truncates every cell to
+   keep the columns aligned, which is fine for finding a row and useless for
+   reading one — a long answer was unreachable without the CSV. */
+/* The one ordering: the table sorted a copy newest-first while the sheet
+   walked the store's own order, so the first row opened as "2 of 2". */
+function subList(){
+  return (state.rows || store.rowsFor(state.formId)).slice()
+    .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+}
+function renderSub(){
+  const f = form(); if(!f) return;
+  const list = subList();
+  const i = list.findIndex(r => r.id === state.openSub);
+  const r = list[i];
+  if(!r){ state.openSub = null; return; }
+
+  const scrim = document.createElement('div');
+  scrim.className = 'scrim'; scrim.dataset.act = 'close-sub';
+  const sheet = document.createElement('div');
+  sheet.className = 'subsheet';
+
+  const cols = f.blocks.filter(b => isInput(b.type));
+  const hcols = fields(f);
+  const answered = cols.filter(b => cellText(b, r) !== '').length;
+  const rows = cols.map(b => {
+    const v = cellText(b, r);
+    return `<div class="sf"><div class="sl">${esc(b.label || TYPES[b.type].n)}</div>
+      <div class="sv${v ? '' : ' none'}">${v ? esc(v) : 'No answer'}</div></div>`;
+  }).join('');
+  const hidden = hcols.length ? `<div class="sf"><div class="sl">Hidden fields</div><div class="sv">${
+    hcols.map(h => `<code>@${esc(h.name)} = ${esc((r.hidden||{})[h.name] || '')}</code>`).join(' ')}</div></div>` : '';
+
+  sheet.innerHTML = `
+    <div class="subhead">
+      <div><strong>${fmt(new Date(r.createdAt))}</strong>${r.local ? ' <span class="pill">local</span>' : ''}
+        <span class="sub-of">${i + 1} of ${list.length} · ${answered}/${cols.length} answered</span></div>
+      <div class="subnav">
+        <button class="btn" data-act="step-sub" data-d="-1"${i <= 0 ? ' disabled' : ''} aria-label="Previous response">‹</button>
+        <button class="btn" data-act="step-sub" data-d="1"${i >= list.length - 1 ? ' disabled' : ''} aria-label="Next response">›</button>
+        <button class="btn" data-act="close-sub" aria-label="Close">×</button>
+      </div>
+    </div>
+    <div class="subbody">${rows}${hidden}</div>
+    <div class="subfoot">
+      <button class="btn ghost" data-act="del-sub" data-id="${r.id}">${state.confirmSub === r.id ? 'Delete?' : 'Remove this response'}</button>
+    </div>`;
+  layer.appendChild(scrim); layer.appendChild(sheet);
+}
+
 function renderPanel(){
   const f = form();
   // the account panel belongs to the app, not to a form, so it opens on the
@@ -2139,8 +2213,19 @@ document.addEventListener('click', async e=>{
       }
       state.confirmSub = null;
       const rec = store.rowsFor(state.formId).find(r=>r.id===id);
+      if(state.openSub === id) state.openSub = null;
       const res = await store.deleteSub(rec);
       toast(res.ok ? 'Response removed' : (res.message || 'Could not remove it'));
+      break;
+    }
+    case 'open-subs': go('responses', a.dataset.id); break;
+    case 'open-sub': state.openSub = a.dataset.id; render(); break;
+    case 'close-sub': state.openSub = null; state.confirmSub = null; render(); break;
+    case 'step-sub': {
+      const list = subList();
+      const i = list.findIndex(r=>r.id===state.openSub);
+      const to = list[i + Number(a.dataset.d)];
+      if(to){ state.openSub = to.id; state.confirmSub = null; render(); }
       break;
     }
     case 'copy-csv': copy(csv()); break;
@@ -2295,6 +2380,15 @@ document.addEventListener('keydown', e=>{
      a caret-level undo and a document-level one fighting each other is worse
      than either. */
   if(e.key === 'Escape' && drag.live){ dragStop(false); return; }
+  if(state.openSub && state.view==='responses'){
+    if(e.key === 'Escape'){ state.openSub = null; state.confirmSub = null; render(); return; }
+    if(e.key === 'ArrowLeft' || e.key === 'ArrowRight'){
+      const list = subList();
+      const to = list[list.findIndex(r=>r.id===state.openSub) + (e.key === 'ArrowRight' ? 1 : -1)];
+      if(to){ e.preventDefault(); state.openSub = to.id; state.confirmSub = null; render(); }
+      return;
+    }
+  }
   if((e.ctrlKey || e.metaKey) && /^[zyZY]$/.test(e.key)){
     if(state.view !== 'build' || !canEdit(f)) return;
     e.preventDefault();

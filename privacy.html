@@ -457,8 +457,31 @@ table{border-collapse:collapse;width:100%;font-size:var(--fs-label);line-height:
 th,td{text-align:left;padding:var(--sp-2) var(--sp-3);border-bottom:1px solid var(--line);vertical-align:top;white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis}
 /* the remove sits in its own column at the end, out of the way until the row
    is under the cursor. This table is app chrome, not a form sheet, so it takes
-   the app's tokens rather than the --f-* ones. */
-td.act,th:last-child{width:1%;text-align:right}
+   the app's tokens rather than the --f-* ones. Sticky, because a form with a
+   dozen questions is wider than the screen and the column would otherwise be
+   a horizontal scroll away. */
+td.act,th:last-child{position:sticky;right:0;z-index:1;width:1%;text-align:right;background:var(--surface);border-left:1px solid var(--line)}
+.subrow{cursor:pointer}
+.subrow:hover td{background:var(--sunk)}
+
+/* one response, read as a page rather than a row */
+.subsheet{position:fixed;z-index:55;left:50%;top:50%;translate:-50% -50%;
+  width:min(620px,calc(100vw - 28px));max-height:min(80vh,760px);
+  display:flex;flex-direction:column;overflow:hidden;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow)}
+.subhead{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3) var(--sp-4);border-bottom:1px solid var(--line)}
+.subhead>div:first-child{flex:1;min-width:0}
+.sub-of{display:block;color:var(--muted);font-size:var(--fs-micro);line-height:var(--lh-micro)}
+.subnav{display:flex;gap:var(--sp-1);flex:none}
+.subnav .btn{padding:var(--sp-1) var(--sp-3)}
+.subbody{overflow:auto;padding:var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-4)}
+.sf{display:grid;gap:var(--sp-1)}
+.sl{font-size:var(--fs-micro);line-height:var(--lh-micro);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+/* pre-wrap and anywhere: the table truncates, this is the place that does not */
+.sv{font-size:var(--fs-body);line-height:var(--lh-body);white-space:pre-wrap;overflow-wrap:anywhere}
+.sv.none{color:var(--faint)}
+.sv code{font-family:var(--mono);font-size:var(--fs-micro);line-height:var(--lh-micro);background:var(--sunk);padding:var(--sp-1) var(--sp-2);border-radius:var(--r-sm)}
+.subfoot{padding:var(--sp-3) var(--sp-4);border-top:1px solid var(--line);display:flex;justify-content:flex-end}
 .rowrm{opacity:0;color:var(--muted);padding:var(--sp-1) var(--sp-2);border-radius:var(--r-sm);font-size:var(--fs-micro);line-height:var(--lh-micro)}
 tr:hover .rowrm,.rowrm:focus-visible{opacity:1}
 .rowrm:hover{background:var(--soft);color:var(--danger)}
