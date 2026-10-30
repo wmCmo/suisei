@@ -317,6 +317,28 @@ const store = {
   },
 
   bump(rec){ if(!this.remote.some(r=>r.id===rec.id)) this.remote.push(rec); },
+
+  /* A response is the one thing here that undo does not cover: it belongs to
+     whoever sent it, not to the editor's document. The database has allowed
+     this since the 29 Oct migration — subs_delete_owner, plus delete granted
+     to authenticated — so the only thing missing was asking. */
+  async deleteSub(rec){
+    if(!rec) return {ok:false};
+    if(rec.local){
+      this.subs = this.subs.filter(s => s.id !== rec.id);
+      this.writeLocal();
+    } else {
+      if(!sb || !this.user) return {ok:false, message:'Sign in to remove a response'};
+      const {error} = await sb.from('submissions').delete().eq('id', rec.id);
+      if(error){ this.lastError = error.message; return {ok:false, message:error.message}; }
+      this.remote = this.remote.filter(r => r.id !== rec.id);
+      const n = this.counts[rec.formId];
+      if(n !== undefined) this.counts[rec.formId] = Math.max(0, n - 1);
+    }
+    if(this.onSubs && this.onSubsId === rec.formId) this.onSubs(this.rowsFor(rec.formId));
+    render();
+    return {ok:true};
+  },
   rowsFor(formId){
     const seen = new Set();
     return this.remote.concat(this.subs).filter(r => r.formId===formId && !seen.has(r.id) && seen.add(r.id));
@@ -351,7 +373,7 @@ const store = {
 
 /* ============================ app state ============================ */
 const state = {view:'home', formId:null, sel:null, focus:null, menu:null, panel:null,
-  dirtyUntil:0, page:0, step:0, hist:[], answers:{}, bad:{}, done:false, rows:null, confirmDel:null,
+  dirtyUntil:0, page:0, step:0, hist:[], answers:{}, bad:{}, done:false, rows:null, confirmDel:null, confirmSub:null,
   hidden:{}, testHidden:{}, emojiQ:'', missing:null, runner:null};
 // a form is either yours or one you are visiting; everything that resolves an
 // id must go through here, or a respondent's link lands on an empty workspace
@@ -431,7 +453,7 @@ function go(view, id){
   if((view==='build' || view==='responses') && !canEdit(formById(id===undefined ? state.formId : id))) view = 'fill';
   if(id!==undefined && id!==state.formId){ state.testHidden = {}; state.runner = null; }
   state.view = view; if(id!==undefined) state.formId = id;
-  state.sel = null; state.menu = null; state.panel = null; state.confirmDel = null;
+  state.sel = null; state.menu = null; state.panel = null; state.confirmDel = null; state.confirmSub = null;
   if(view==='fill'){ state.page=0; state.step=0; state.hist=[]; state.answers={}; state.bad={}; state.done=false; }
   if(view==='responses'){ state.rows = null; store.watchSubs(state.formId, rows=>{ state.rows = rows; if(state.view==='responses') render(); }); }
   else store.stopWatch();
@@ -1172,8 +1194,8 @@ function renderResponses(){
   }).join('');
   const hcols = fields(f);
   const cell = v => `<td title="${esc(v)}">${esc(v)||'<span style="color:var(--faint)">—</span>'}</td>`;
-  const head = `<tr><th>Submitted</th>${cols.map(b=>`<th>${esc(b.label||TYPES[b.type].n)}</th>`).join('')}${hcols.map(h=>`<th>@${esc(h.name)}</th>`).join('')}</tr>`;
-  const body = rows.map(r=>`<tr><td class="when">${fmt(new Date(r.createdAt))}${r.local?' <span class="pill">local</span>':''}</td>${cols.map(b=>cell(cellText(b,r))).join('')}${hcols.map(h=>cell((r.hidden||{})[h.name]||'')).join('')}</tr>`).join('');
+  const head = `<tr><th>Submitted</th>${cols.map(b=>`<th>${esc(b.label||TYPES[b.type].n)}</th>`).join('')}${hcols.map(h=>`<th>@${esc(h.name)}</th>`).join('')}<th></th></tr>`;
+  const body = rows.map(r=>`<tr><td class="when">${fmt(new Date(r.createdAt))}${r.local?' <span class="pill">local</span>':''}</td>${cols.map(b=>cell(cellText(b,r))).join('')}${hcols.map(h=>cell((r.hidden||{})[h.name]||'')).join('')}<td class="act"><button class="rowrm" data-act="del-sub" data-id="${r.id}">${state.confirmSub===r.id?'Delete?':'Remove'}</button></td></tr>`).join('');
   return `<div class="wrap">
     <div class="lede"><div><h1>Responses</h1><p>${rows.length} submission${rows.length===1?'':'s'} to “${esc(f.title)}”.</p></div>
       <div class="tools">
@@ -1396,7 +1418,7 @@ function applyType(k){
 }
 
 /* ============================ events ============================ */
-document.addEventListener('click', e=>{
+document.addEventListener('click', async e=>{
   // a click on the scrim only dismisses the menu; it must not also reach the
   // editor behind it
   if(e.target.classList && e.target.classList.contains('menu-scrim')){ closeMenu(); return; }
@@ -1568,6 +1590,19 @@ document.addEventListener('click', e=>{
     // editing the form: it must not save, least of all on someone else's copy
     case 'runner': { state.runner = (state.runner||f.theme.runner)==='step'?'grid':'step'; state.page=0; state.step=0; state.hist=[]; state.bad={}; render(); break; }
     /* responses */
+    case 'del-sub': {
+      const id = a.dataset.id;
+      if(state.confirmSub !== id){
+        state.confirmSub = id; render();
+        setTimeout(()=>{ if(state.confirmSub===id){ state.confirmSub=null; render(); } }, 6000);
+        break;
+      }
+      state.confirmSub = null;
+      const rec = store.rowsFor(state.formId).find(r=>r.id===id);
+      const res = await store.deleteSub(rec);
+      toast(res.ok ? 'Response removed' : (res.message || 'Could not remove it'));
+      break;
+    }
     case 'copy-csv': copy(csv()); break;
     case 'dl-csv': dlCsv(); break;
   }
