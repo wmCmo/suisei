@@ -798,8 +798,19 @@ function block(type, label, extra){
   if(type==='scale'){ b.max = 10; b.left='Not likely'; b.right='Very likely'; }
   return Object.assign(b, extra||{});
 }
+/* Once forms cannot be listed, a form's id is the only thing between it and a
+   stranger, so it is long and comes from the crypto RNG. 16 characters from a
+   32-letter alphabet is 80 bits; Math.random() and seven characters was ~36.
+   Existing forms keep their ids — changing one would break every link already
+   sent. The alphabet drops 0/o and 1/l so a link read aloud survives. */
+const ID_ALPHABET = 'abcdefghijkmnpqrstuvwxyz23456789';
+function formId(){
+  const b = new Uint8Array(16);
+  crypto.getRandomValues(b);
+  return 'f' + Array.from(b, x => ID_ALPHABET[x & 31]).join('');
+}
 function newForm(title, blocks, logic){
-  return {id:uid('f'), title:title||'Untitled form', emoji:'', published:false, blocks:blocks||[block('short_text','')], logic:logic||[], hidden:[],
+  return {id:formId(), title:title||'Untitled form', emoji:'', published:false, blocks:blocks||[block('short_text','')], logic:logic||[], hidden:[],
     theme:{accent:ACCENTS[0], font:'sans', align:'left', radius:10, bg:'auto', runner:'grid', submit:'Submit', thanks:'Thanks for filling this out.'},
     createdAt:Date.now(), updatedAt:Date.now()};
 }
@@ -952,9 +963,23 @@ const store = {
     this.writeLocal();
   },
 
+  /* A form someone was sent is fetched by id through get_form(), the only
+     read the database allows a stranger once forms are link-only. Until the
+     2026-11-02 migration has been run the function does not exist, so this
+     falls back to reading the table — which is what lets the app ship first
+     and the SQL follow, without breaking any link in between. */
+  async fetchPublished(id){
+    if(this.hasGetForm !== false){
+      const {data, error} = await sb.rpc('get_form', {fid: id});
+      if(!error){ this.hasGetForm = true; return data || []; }
+      this.hasGetForm = false;
+    }
+    const {data} = await sb.from('forms').select('id,doc').eq('id', id).limit(1);
+    return data || [];
+  },
   async loadForm(id){
     if(!sb || !id || this.forms[id] || this.visiting[id]) return;
-    const {data} = await sb.from('forms').select('doc').eq('id', id).limit(1);
+    const data = await this.fetchPublished(id);
     const doc = data && data[0] && data[0].doc;
     if(doc && doc.id){ this.visiting[doc.id] = doc; render(); }
     else { state.missing = id; render(); }        // unpublished, or gone
@@ -969,9 +994,15 @@ const store = {
     const owned = this.owned || new Set();
     const ids = Object.keys(this.forms).filter(id => !owned.has(id));
     if(!ids.length) return;
-    const {data, error} = await sb.from('forms').select('id').in('id', ids);
-    if(error || !data || !data.length) return;
-    data.forEach(r => { delete this.forms[r.id]; delete this.counts[r.id]; });
+    // one at a time: once forms are link-only there is no list to ask for, and
+    // a device only ever carries a handful of these
+    const visits = [];
+    for(const id of ids){
+      const rows = await this.fetchPublished(id);
+      if(rows.length) visits.push(id);
+    }
+    if(!visits.length) return;
+    visits.forEach(id => { delete this.forms[id]; delete this.counts[id]; });
     this.writeLocal(); render();
   },
 

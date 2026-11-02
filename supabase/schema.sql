@@ -42,6 +42,7 @@ alter table public.submissions enable row level security;
 
 drop policy if exists forms_read_all              on public.forms;
 drop policy if exists forms_read_published_or_own on public.forms;
+drop policy if exists forms_read_own      on public.forms;
 drop policy if exists forms_write_owner   on public.forms;
 drop policy if exists forms_update_owner  on public.forms;
 drop policy if exists forms_delete_owner  on public.forms;
@@ -49,11 +50,38 @@ drop policy if exists subs_insert_any     on public.submissions;
 drop policy if exists subs_read_owner     on public.submissions;
 drop policy if exists subs_delete_owner   on public.submissions;
 
--- a published form is public to read: that is how someone fills it. An
--- unpublished one is visible to its owner alone, which also stops it
--- collecting answers, since the insert policy below has to see the form.
-create policy forms_read_published_or_own on public.forms
-  for select using (published or owner = auth.uid());
+-- The table is readable by its owner alone. A form someone was sent is read
+-- through get_form(), one id at a time, and only while it is published — so a
+-- form is reachable by anyone holding its link and listable by nobody.
+-- (A policy cannot make that distinction: one that allows reading a row by id
+-- allows reading every row. That is why this is a function.)
+create policy forms_read_own on public.forms
+  for select using (owner = auth.uid());
+
+create or replace function public.get_form(fid text)
+returns table (id text, doc jsonb, published boolean)
+language sql stable security definer set search_path = public
+as $$
+  select f.id, f.doc, f.published from public.forms f
+  where f.id = fid and f.published
+$$;
+revoke all on function public.get_form(text) from public;
+grant execute on function public.get_form(text) to anon, authenticated;
+
+-- whether a form will take an answer: published, or a draft of your own (that
+-- is how an owner tests a form in Preview). Stated outright, rather than
+-- inherited from what the person submitting happens to be able to read.
+create or replace function public.form_is_open(fid text)
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (
+    select 1 from public.forms f
+    where f.id = fid and (f.published or f.owner = auth.uid())
+  )
+$$;
+revoke all on function public.form_is_open(text) from public;
+grant execute on function public.form_is_open(text) to anon, authenticated;
 
 create policy forms_write_owner on public.forms
   for insert with check (auth.uid() = owner);
@@ -64,11 +92,9 @@ create policy forms_update_owner on public.forms
 create policy forms_delete_owner on public.forms
   for delete using (auth.uid() = owner);
 
--- anyone may answer a form, including a signed-out visitor
+-- anyone may answer a published form, including a signed-out visitor
 create policy subs_insert_any on public.submissions
-  for insert with check (
-    exists (select 1 from public.forms f where f.id = form_id)
-  );
+  for insert with check (public.form_is_open(form_id));
 
 -- only the person who owns the form may read what came back
 create policy subs_read_owner on public.submissions
