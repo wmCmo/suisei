@@ -75,6 +75,10 @@
      whatever happens to be behind it. This is the quiet step of --f-muted,
      mixed on purpose. */
   --f-faint:color-mix(in srgb,var(--f-muted) 58%,var(--f-bg));
+  /* the rest of the muted scale, each one an opacity that used to be applied
+     in app.css and so came out a different colour on every surface */
+  --f-hint:color-mix(in srgb,var(--f-muted) 72%,var(--f-bg));
+  --f-ghost:color-mix(in srgb,var(--f-muted) 42%,var(--f-bg));
   /* --shadow belongs to the app and flips with the app's theme, so a form
      forced light inside a dark app was lit from the wrong side. The sheet
      carries its own, the way it carries its own wash. */

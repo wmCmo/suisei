@@ -80,8 +80,14 @@ Mix the step you want instead and name it, the way `--f-faint` is mixed from
 `--f-muted`. Reserve `opacity` for showing and hiding — `0` to `1` on the
 gutter, the option remove, the card close.
 
-Six of these are still in the file at the time of writing: the three
-`::placeholder` rules, `.stars`, `.stars button:hover` and `.hfrow .lg`.
+The muted scale is `--f-muted` → `--f-hint` (72%) → `--f-faint` (58%) →
+`--f-ghost` (42%), each mixed against the sheet's own background. The six
+opacities that used to stand in for those steps were converted on 4 Nov 2026.
+
+One `opacity` that is *not* this mistake: `::placeholder{opacity:1}`. Firefox
+fades every placeholder to about .54 on its own, so the `1` is a reset that
+stops it stacking on top of the token. Remove it and Firefox placeholders go
+pale while every other browser stays put.
 
 ## `app.css` is not ordered general-then-specific, so ties go the wrong way
 

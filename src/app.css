@@ -83,7 +83,7 @@ svg{display:block}
 .canvasform[data-align="center"] .opt{justify-content:center}
 .col{max-width:680px;margin:0 auto;padding-left:max(var(--sp-4),env(safe-area-inset-left,0px));padding-right:max(var(--sp-4),env(safe-area-inset-right,0px));padding-block:var(--sp-7) var(--sp-8)}
 .ftitle{font-size:var(--fs-display);line-height:var(--lh-display);font-weight:700;letter-spacing:-.03em;width:100%;background:none;border:0;resize:none;font-family:inherit;color:inherit;padding:0;overflow:hidden}
-.ftitle::placeholder{color:var(--f-muted);opacity:.5}
+.ftitle::placeholder{color:var(--f-faint);opacity:1}
 .ftitle:focus{outline:none}
 
 /* ---------- builder blocks ---------- */
@@ -113,14 +113,16 @@ svg{display:block}
 }
 .lbl{width:100%;background:none;border:0;resize:none;overflow:hidden;font-family:inherit;color:inherit;padding:0;font-size:var(--fs-ask);line-height:var(--lh-ask);font-weight:600;letter-spacing:-.012em}
 .lbl:focus{outline:none}
-.lbl::placeholder{color:var(--f-muted);opacity:.52;font-weight:500}
+.lbl::placeholder{color:var(--f-faint);opacity:1;font-weight:500}
 .blk[data-type="h1"] .lbl{font-size:var(--fs-h1);line-height:var(--lh-h1);font-weight:700;letter-spacing:-.025em}
 .blk[data-type="h2"] .lbl{font-size:var(--fs-h2);line-height:var(--lh-h2);font-weight:700;letter-spacing:-.02em}
 .blk[data-type="text"] .lbl{font-size:var(--fs-body);line-height:var(--lh-body);font-weight:400;color:var(--f-muted)}
 .req{color:var(--danger);font-weight:600;margin-left:var(--sp-1)}
 .field{margin-top:var(--sp-2)}
 .fi{width:100%;background:var(--f-bg);border:1px solid var(--f-line);border-radius:var(--f-r);padding:var(--sp-2) var(--sp-3);font-size:var(--fs-body);line-height:var(--lh-body);font-family:inherit;color:inherit}
-.fi::placeholder{color:var(--f-muted);opacity:.72}
+/* opacity:1 is a reset, not a colour: Firefox fades every ::placeholder to
+   about .54 by itself, and that would land on top of the token */
+.fi::placeholder{color:var(--f-hint);opacity:1}
 .fi:focus{outline:none;border-color:var(--f-accent-text);box-shadow:0 0 0 3px var(--f-wash)}
 textarea.fi{resize:vertical;min-height:76px;line-height:1.5}
 select.fi{height:40px;background-color:var(--f-bg)}
@@ -137,9 +139,9 @@ select.fi{height:40px;background-color:var(--f-bg)}
 .addopt:hover{color:var(--f-accent-text)}
 .stars{display:flex;gap:var(--sp-2);align-items:center}
 .stars svg{width:23px;height:23px}
-.stars button,.stars span{color:var(--f-muted);opacity:.42;transition:opacity .12s}
-.stars button:hover{opacity:.8}
-.stars .on{color:var(--f-accent-text);opacity:1}
+.stars button,.stars span{color:var(--f-ghost);transition:color .12s}
+.stars button:hover{color:var(--f-hint)}
+.stars .on{color:var(--f-accent-text)}
 .scale{display:flex;gap:var(--sp-1);flex-wrap:wrap}
 .scale button,.scale span{min-width:38px;height:38px;display:grid;place-items:center;border:1px solid var(--f-line);border-radius:var(--f-r);font-variant-numeric:tabular-nums;font-size:var(--fs-body);line-height:var(--lh-body)}
 .scale .on{background:var(--f-accent);border-color:var(--f-accent);color:var(--on-accent)}
@@ -230,7 +232,7 @@ select.fi{background-position:right var(--sp-3) center;padding-right:var(--sp-6)
 .hfrow code{font-family:var(--mono);font-size:var(--fs-micro);line-height:var(--lh-micro);background:var(--f-soft);padding:var(--sp-1) var(--sp-2);border-radius:var(--r-sm);color:var(--f-muted)}
 .hfrow button{font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--f-muted)}
 .hfrow button:hover{color:var(--f-accent-text)}
-.hfrow .lg{font-weight:500;font-size:var(--fs-micro);line-height:var(--lh-micro);text-transform:uppercase;letter-spacing:.08em;color:var(--f-muted);opacity:.75}
+.hfrow .lg{font-weight:500;font-size:var(--fs-micro);line-height:var(--lh-micro);text-transform:uppercase;letter-spacing:.08em;color:var(--f-hint)}
 .hf{display:flex;align-items:center;gap:var(--sp-1);margin-bottom:var(--sp-1)}
 .hf code{font-family:var(--mono);font-size:var(--fs-micro);line-height:var(--lh-micro);background:var(--sunk);padding:var(--sp-1) var(--sp-2);border-radius:var(--r-sm);white-space:nowrap;max-width:118px;overflow:hidden;text-overflow:ellipsis}
 .hf input{flex:1;min-width:0}
