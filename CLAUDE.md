@@ -60,6 +60,14 @@ GitHub Pages serves the previous `index.html` from the browser cache for a while
 after a deploy. After pushing a change to the root page, a hard refresh is the
 difference between "it did not deploy" and "it deployed fine".
 
+"A while" is `Cache-Control: max-age=600`, and it applies to every respondent,
+not just to you. So a database change that the *previous* app cannot survive has
+to wait: ship an app that works against both the old and new database, let ten
+minutes pass, and only then run the SQL that takes something away. Run it early
+and anyone holding the old `app.html` hits the new rules with the old code. The
+link-only migration of 2 Nov 2026 is two files for this reason — step 1 only
+adds, step 2 removes.
+
 ## The stylesheet lint does not see a token faded with opacity
 
 `scripts/build.mjs` rejects colour *literals* in `app.css` — a hex, an `rgb()`,
