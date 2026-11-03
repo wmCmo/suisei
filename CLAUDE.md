@@ -4,6 +4,18 @@ The README says what the project is and how it is built. This file holds only
 what the code does not say: traps in how the pieces fit, each one learned by
 hitting it.
 
+## Run `node scripts/test.mjs` before pushing
+
+No dependencies, about a second. It runs `src/app.js` in `node:vm` and covers the
+logic that has actually broken: the condition evaluator and its legacy flat
+rules, pruning conditions when a question is deleted, undo coalescing, form ids,
+response ordering, ownership checks and CSV quoting.
+
+Browser checks are not a substitute. On 4 Nov 2026 it found that undo had been
+losing everything typed after the first letter of a burst whenever another edit
+followed — something every hand-run browser test had missed, because each one
+undid the burst itself and never an edit after it.
+
 ## The build reads `.env`, never `process.env`
 
 `scripts/build.mjs` loads `SUPABASE_URL` and `SUPABASE_ANON_KEY` from a `.env`

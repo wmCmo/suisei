@@ -983,10 +983,13 @@ const canEdit = f => !!f && !store.visiting[f.id];
    new one. The call sites pass a key for the first kind and nothing for the
    second.
 
-   base always holds the document as it was before the edit in progress, which
-   is what makes this work from inside saveForm: by the time saveForm runs the
-   object has already been mutated, so the thing worth keeping is the copy
-   taken last time. */
+   base holds the document as it stood after the most recent change, which is
+   what makes this work from inside saveForm: by the time saveForm runs the
+   object has already been mutated, so when a new step begins, base is the
+   state it began from. That has to stay true through a burst of typing too —
+   base used to stop moving at a burst's first keystroke, so an edit after the
+   burst pushed that stale copy, and one undo lost everything typed after the
+   first letter. */
 const UNDO_COALESCE = 600, UNDO_LIMIT = 80;
 const undoStack = {
   id:null, past:[], future:[], base:null, lastKey:null, lastAt:0, applying:false,
@@ -1002,7 +1005,8 @@ const undoStack = {
     const now = Date.now();
     const extend = key && key === this.lastKey && (now - this.lastAt) < UNDO_COALESCE;
     this.lastKey = key || null; this.lastAt = now;
-    if(extend) return;
+    // the burst goes on, so no new step — but keep base level with it
+    if(extend){ this.base = JSON.stringify(f); return; }
     if(this.base !== null){
       this.past.push(this.base);
       if(this.past.length > UNDO_LIMIT) this.past.shift();
