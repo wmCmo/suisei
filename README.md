@@ -28,9 +28,12 @@ origin to build them from).
 
 ## What's in it
 
-**Editor** — a document, not a form of forms. Enter starts a new line, `/` opens
-the block menu, Backspace on an empty line removes it, arrows move between blocks,
-the grip handle drags. 18 block types:
+**Editor** — a document, not a form of forms. Enter starts a new line (from the
+title too), `/` opens the block menu, Backspace on an empty line removes it,
+arrows move between blocks, and the grip handle drags — with a mouse, a pen or a
+finger, scrolling the page when you reach its edge. Ctrl+Z and Ctrl+Shift+Z undo
+and redo; a burst of typing in one place is one step, and anything structural is
+its own. 18 block types:
 
 | | |
 |---|---|
@@ -42,11 +45,15 @@ Back/Next. Back retraces the path actually taken, not page − 1.
 
 **Logic** — select a question, hit Logic, and you get a rule:
 
-> When `[question]` `[is]` `[answer]` Then `[jump to | show | hide | submit]` `[target]`
+> When `[question]` `[is any of]` `[answers]` Then `[jump to | show | hide | submit]` `[target]`
 
-Conditions follow the question type: `is` / `is not` on choices, `is more than` /
-`is less than` on numbers, ratings and scales, `contains` on text, plus
-`is empty` / `is answered` on anything. A block targeted by a `show` rule starts
+Add conditions and they join with **and** or **or**; add a group and it nests,
+so a rule can say *A and (B or C)*. Conditions follow the question type:
+`is any of` / `is none of` on choices, holding as many options as you like,
+`is more than` / `is less than` on numbers, ratings and scales, `contains` on
+text, plus `is empty` / `is answered` on anything. Rules written before groups
+existed still work as they were, and are rewritten into the new shape the first
+time you edit one. A block targeted by a `show` rule starts
 hidden and appears the moment its condition holds — live, while someone is
 filling, not on page change. Pages whose blocks are all hidden get skipped,
 hidden required questions never block submission, and answers to blocks that
@@ -84,23 +91,30 @@ licensed, in the Flat style: SVGs of a few KB each, served from the repository
 through jsDelivr and pinned to a commit so a rename upstream cannot quietly
 break an icon someone picked.
 
-`src/emoji.json` lists the 183 icons the picker offers. It is generated, not
-written: Fluent Emoji's folder names do not always follow from the emoji's name,
-and the hand and body emoji carry an extra skin-tone level in their path, so
-every path is requested before it is included.
+The picker offers all 1,595 of them. `src/emoji.json` is generated, not written:
+it is read from the repository's own file tree at the pinned commit, so every
+path is one that exists — including the skin-toned ones, whose folders carry an
+extra level. The index is served as its own file and fetched the first time the
+picker opens, so the landing page and a form being answered never download it;
+the grid shows a screenful and search reaches the rest.
 
 ```bash
-node scripts/emoji.mjs            # re-verify against the pinned commit
-node scripts/emoji.mjs --latest   # repin to current main, then re-verify
+node scripts/emoji.mjs            # rebuild the index from the pinned commit
+node scripts/emoji.mjs --latest   # repin to current main, then rebuild
 ```
 
 **Theme** — accent, typeface, alignment, light/dark/auto, corner style, runner,
 button label and thank-you message, per form, live in the editor.
 
 **Responses** — count, latest, average completion, per-question breakdown bars,
-the full table, Copy CSV and Download CSV. The download carries a byte order
-mark, without which Excel reads a UTF-8 export as mojibake — which matters the
-moment a form is answered in anything but English.
+the full table, Copy CSV and Download CSV. Click a row and the response opens on
+its own, every answer in full where the table truncates, with ‹ › (or the arrow
+keys) to walk through them. Each one can be removed; that asks twice, because
+undo covers the form and never a response someone sent. The workspace card goes
+straight to Responses, and nothing there can change the form, so reading the
+answers can't disturb what you prepared. The download carries a byte order mark,
+without which Excel reads a UTF-8 export as mojibake — which matters the moment a
+form is answered in anything but English.
 
 ## Signing in
 
@@ -122,50 +136,55 @@ Until that is done the Sign in button returns a provider error and the app
 keeps forms in this browser. Nothing else breaks: a form that is already in
 the project still loads and still collects answers from anyone.
 
-## Draft and published
+## Draft, published, and link-only
 
-A form is a draft when you make it. While it is a draft its link opens nothing
-for anyone but you, and no answer can be recorded against it — the row is
-invisible to a stranger, and the insert policy has to see the form before it
-will accept an answer. Publish it from the Share panel and the link starts
-working; unpublish and it stops.
+A form is a draft when you make it, and only you can open it or test it. Publish
+it from the Share panel and its link starts working for anyone who has it;
+unpublish and it stops. A published form is reachable by its link and **listed
+by nobody**.
 
-This is enforced in Postgres, not in the page:
+That last part cannot be a row-level security policy. The publishable key ships
+inside every page, and a policy that lets a stranger read a row by its id lets
+them read every row: `?published=eq.true` would list every published form there
+is. So the table is readable only by its owner, and a stranger's one way in is a
+function:
 
 ```sql
-create policy forms_read_published_or_own on public.forms
-  for select using (published or owner = auth.uid());
+get_form(id)       -- one published form, by id; it has no way to return a list
+form_is_open(id)   -- will this form accept an answer: published, or your own draft
 ```
 
-Before this, a form's link was the only thing keeping it unlisted: the
-publishable key ships inside the page, so anyone holding it could read any row
-in the table, drafts included. Run `supabase/migrations/2026-10-29_published.sql`
-once on an existing project; it backfills every form that already exists as
-published, so nothing already shared stops working.
+The second is what the insert policy on `submissions` asks. It used to read the
+forms table as whoever was submitting, which only worked while a stranger could
+see published forms — tighten the read and every answer would have been refused.
+
+Because the id is now the whole of a form's privacy, new forms get 80 bits of it
+from `crypto.getRandomValues`. Forms made earlier keep their shorter ids; changing
+one would break every link already sent.
+
+On an existing project, run the migrations in order:
+`supabase/migrations/2026-10-29_published.sql`, then
+`2026-11-02_link_only_1_functions.sql`, then — once an app that reads through
+`get_form` has been live for ten minutes — `2026-11-02_link_only_2_policy.sql`.
+The ten minutes is GitHub Pages' cache: a browser can keep running the previous
+app that long, and the previous app reads the table directly.
 
 ## Where the data lives
 
-**In the browser, and nowhere else.** Forms and responses go to `localStorage`.
-That means each visitor's answers stay in *their* browser and never reach you.
-Fine for a demo or a personal tool; not a form service.
+**In Supabase**: two tables, `forms` and `submissions`, with row-level security
+doing the access control described above. The project's URL and publishable key
+are read from `.env` at build time and inlined into the page — that key is meant
+to be public, and the policies are the boundary.
 
-The hosted version on claude.ai uses that platform's shared store, which is why
-responses are visible there and not here. To make this repo collect responses
-for real, replace the `store` object near the top of the `<script>` — it is
-deliberately small, five methods:
+While you are signed out, the builder keeps your forms in this browser's
+`localStorage` and says so in the bar ("this device"); answers people send to a
+form that is in the project still reach it. Without a `.env` there is no project
+at all, and everything — forms and answers — stays in each browser. The build prints
+`No .env: built for this-device storage only` in that case and otherwise looks
+completely normal — worth knowing before wiring it into any CI.
 
-```js
-store.saveForm(form)             // upsert a form
-store.deleteForm(id)
-store.submit(record)             // { id, formId, createdAt, answers, hidden }
-store.watchSubs(formId, cb)      // cb(rows) now and on change
-store.countFor(id)
-```
-
-Supabase is the shortest path: two tables (`forms`, `submissions`), the anon key
-in the client, and row-level security that lets anyone insert a submission while
-only you can select them. That maps onto what the hosted version already enforces.
-Firebase, Cloudflare D1 or a dozen lines of Express fit the same shape.
+`supabase/schema.sql` builds a fresh project; `supabase/migrations/` brings an
+existing one forward.
 
 ## How it's put together
 
@@ -189,6 +208,16 @@ literal found outside `tokens.css`:
 ```bash
 node scripts/build.mjs   # builds, and fails on anything written by hand
 ```
+
+There is a regression suite too — no dependencies, about a second:
+
+```bash
+node scripts/test.mjs    # runs src/app.js in node:vm against stubbed browser globals
+```
+
+It covers the logic that has actually broken: the condition evaluator and its
+older flat rules, pruning conditions when a question is deleted, undo, form ids,
+response ordering, ownership checks and CSV quoting.
 
 All three scales are enforced. A colour literal, a raw `font-size`, or a padding,
 gap or radius in loose pixels fails the build, so `app.css` cannot drift back to
@@ -250,15 +279,25 @@ payments, embedding in another page, email notifications.
 ## Files
 
 ```
-src/                 the source (see above)
-scripts/build.mjs    build + the token lint
-scripts/emoji.mjs    regenerates the verified icon list
-index.html           built; deploy this
-states.html          built; the component mirror
+src/                    the source (see above)
+scripts/build.mjs       build + the token lint
+scripts/test.mjs        the regression suite
+scripts/emoji.mjs       regenerates the icon index
+scripts/render.mjs      redraws the share card and the icons in a browser
+supabase/schema.sql     a fresh project
+supabase/migrations/    an existing one, brought forward
+index.html              built; the landing page
+app.html                built; the builder, and where form links open
+privacy.html            built
+states.html             built; the component mirror
+emoji.json              built; the icon index, fetched on demand
+card.png, favicon.ico,
+favicon-32.png,
+apple-touch-icon.png    rendered by scripts/render.mjs
 ```
 
-`index.html` and `states.html` are build output and are committed, so the repo
-can be served as-is with nothing installed.
+Everything built is committed, so the repo can be served as-is with nothing
+installed.
 
 ## License
 
@@ -268,5 +307,6 @@ notice.
 Two things in here are other people's and keep their own terms. The icons are
 [Fluent Emoji](https://github.com/microsoft/fluentui-emoji) by Microsoft, MIT
 licensed, loaded from their repository rather than copied into this one. The
-typefaces are Zen Kaku Gothic New and Zen Old Mincho, served by Google Fonts
-under the SIL Open Font License.
+typefaces — Zen Kaku Gothic New, Zen Old Mincho, Noto Sans Thai, Noto Serif Thai
+and Noto Sans JP (for the 水 mark alone) — are served by Google Fonts under the
+SIL Open Font License.
