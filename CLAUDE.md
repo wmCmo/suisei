@@ -114,6 +114,29 @@ tokens, not cascade. When adding an override, check where the base rule for
 that selector lives and put the override after it, then read the computed value
 back rather than trusting the file.
 
+## The editor's selects are native on purpose
+
+The form's dropdown (`select.fi`) uses `appearance: base-select`. The logic
+rule selects in the editor do not, and moving them across was tried and backed
+out on 4 Nov 2026 after four regressions in a row:
+
+- A native select is as wide as its *longest* option; a base-select is as wide
+  as the one *selected*. Condition rows stopped lining up — the operator column
+  moved from x=440 on both rows to 372 on one — as soon as two questions had
+  different-length titles.
+- Long question titles wrapped to two lines inside a 30px control.
+- The logic selects keep `padding-right` for the caret painted as a background
+  image. base-select draws its own icon inside the box as well, so the text was
+  squeezed from both sides.
+- With `overflow:hidden` added to stop the wrapping, a long title pushed the
+  icon out of the box and clipped it off — the select no longer looked like one.
+
+Doing it properly means `<button><selectedcontent></selectedcontent></button>`
+inside each logic `<select>`, so the text can ellipsize while the icon keeps its
+place, plus stated widths for the question and operator columns. That markup
+also changes how browsers without customizable selects parse those elements, so
+check Firefox. `select.fi` gets away without any of it because it is full width.
+
 ## A floating element loses the form's tokens
 
 Anything appended to `document.body` is outside `.canvasform`, where every
